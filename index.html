@@ -1,0 +1,2125 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Tempahan TVPSS - SK Putrajaya Presint 5(1)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+        .toast.show {
+            transform: translateX(0);
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+        }
+        .time-slot {
+            transition: all 0.2s ease;
+        }
+        .time-slot:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .loading {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-6 shadow-lg">
+        <div class="container mx-auto px-4 text-center">
+            <h1 class="text-3xl md:text-4xl font-bold mb-2">📺 Sistem Tempahan TVPSS</h1>
+            <p class="text-blue-200 text-lg">SK Putrajaya Presint 5(1)</p>
+            <div class="flex justify-center items-center space-x-4 mt-4 text-sm">
+                <div id="connectionStatus" class="flex items-center bg-white bg-opacity-20 px-3 py-1 rounded-full">
+                    <div id="statusDot" class="w-2 h-2 rounded-full bg-red-400 mr-2"></div>
+                    <span id="statusText">Menyambung...</span>
+                </div>
+                <div class="bg-white bg-opacity-20 px-3 py-1 rounded-full">
+                    <span id="lastSync">🔄 Disegerak: Tidak pernah</span>
+                </div>
+                <div id="adminStatus" class="hidden bg-green-500 bg-opacity-80 px-3 py-1 rounded-full">
+                    <span>🔐 Admin Login</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="bg-white shadow-md border-b">
+        <div class="container mx-auto px-4">
+            <div class="flex space-x-1 overflow-x-auto py-2">
+                <button class="tab-btn py-2 px-4 rounded-t-lg border-b-2 border-blue-500 bg-blue-50 text-blue-600 font-medium whitespace-nowrap" data-tab="studio">
+                    📝 Tempah Studio
+                </button>
+                <button class="tab-btn py-2 px-4 rounded-t-lg border-b-2 border-transparent text-gray-600 font-medium whitespace-nowrap hover:text-blue-600 hover:border-blue-300" data-tab="equipment">
+                    📷 Pinjam Alatan
+                </button>
+                <button class="tab-btn py-2 px-4 rounded-t-lg border-b-2 border-transparent text-gray-600 font-medium whitespace-nowrap hover:text-blue-600 hover:border-blue-300" data-tab="documentation">
+                    📹 Dokumentasi
+                </button>
+                <button class="tab-btn py-2 px-4 rounded-t-lg border-b-2 border-transparent text-gray-600 font-medium whitespace-nowrap hover:text-blue-600 hover:border-blue-300" data-tab="schedule">
+                    📅 Jadual
+                </button>
+                <button class="tab-btn py-2 px-4 rounded-t-lg border-b-2 border-transparent text-gray-600 font-medium whitespace-nowrap hover:text-blue-600 hover:border-blue-300" data-tab="status">
+                    📋 Status
+                </button>
+                <button class="tab-btn py-2 px-4 rounded-t-lg border-b-2 border-transparent text-gray-600 font-medium whitespace-nowrap hover:text-blue-600 hover:border-blue-300" data-tab="admin">
+                    🔧 Admin
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-6">
+        <!-- Studio Booking Tab -->
+        <div id="studioTab" class="tab-content">
+            <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">📝 Tempahan Studio TVPSS</h2>
+                
+                <form id="studioForm" class="space-y-4">
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nama Guru *</label>
+                            <input type="text" id="studioTeacherName" required 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   placeholder="Cth: Encik Ahmad Razak">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">No. Telefon *</label>
+                            <input type="tel" id="studioPhoneNumber" required 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   placeholder="Cth: 019-9876543">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Kelas/Panel *</label>
+                        <input type="text" id="studioClassPanel" required 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="Cth: 5 Cemerlang, Panel Sains">
+                    </div>
+
+                    <div class="grid md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Tarikh Tempahan *</label>
+                            <input type="date" id="studioBookingDate" required 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Masa Mula *</label>
+                            <select id="studioStartTime" required 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">Pilih masa mula</option>
+                                <option value="07:30">07:30</option>
+                                <option value="08:00">08:00</option>
+                                <option value="08:30">08:30</option>
+                                <option value="09:00">09:00</option>
+                                <option value="09:30">09:30</option>
+                                <option value="10:00">10:00</option>
+                                <option value="10:30">10:30</option>
+                                <option value="11:00">11:00</option>
+                                <option value="11:30">11:30</option>
+                                <option value="12:00">12:00</option>
+                                <option value="12:30">12:30</option>
+                                <option value="13:00">13:00</option>
+                                <option value="13:30">13:30</option>
+                                <option value="14:00">14:00</option>
+                                <option value="14:30">14:30</option>
+                                <option value="15:00">15:00</option>
+                                <option value="15:30">15:30</option>
+                                <option value="16:00">16:00</option>
+                                <option value="16:30">16:30</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Masa Tamat *</label>
+                            <select id="studioEndTime" required 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">Pilih masa tamat</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Tujuan Penggunaan Studio *</label>
+                        <textarea id="studioStudioPurpose" required rows="4"
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  placeholder="Sila nyatakan tujuan penggunaan studio TVPSS..."></textarea>
+                    </div>
+
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <h3 class="font-medium text-blue-800 mb-2">📋 Nota Penting:</h3>
+                        <ul class="text-sm text-blue-700 space-y-1">
+                            <li>• Tempahan perlu dibuat sekurang-kurangnya 3 hari sebelum tarikh penggunaan</li>
+                            <li>• Studio TVPSS hanya boleh digunakan semasa waktu persekolahan</li>
+                            <li>• Sila pastikan semua peralatan dikembalikan dalam keadaan baik</li>
+                            <li>• Tempahan akan disahkan oleh Penyelaras TVPSS dalam masa 24 jam</li>
+                        </ul>
+                    </div>
+
+                    <!-- Troubleshooting Guide -->
+                    <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                        <h3 class="font-medium text-blue-800 mb-2">💡 Panduan Sistem:</h3>
+                        <ul class="text-sm text-blue-700 space-y-1">
+                            <li>• <strong>Sistem Realtime:</strong> Semua tempahan dihantar terus ke Firebase</li>
+                            <li>• <strong>Status Terkini:</strong> Semak status tempahan di tab "Status"</li>
+                            <li>• <strong>Konflik Masa:</strong> Sistem akan memberitahu jika masa telah ditempah</li>
+                            <li>• <strong>Bantuan Lanjut:</strong> Hubungi Penyelaras TVPSS di 03-xxxx-xxxx</li>
+                        </ul>
+                    </div>
+
+                    <button type="submit" id="studioSubmitBtn" 
+                            class="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium">
+                        📝 Hantar Tempahan Studio
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Equipment Booking Tab -->
+        <div id="equipmentTab" class="tab-content hidden">
+            <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">📷 Permohonan Pinjaman Alatan</h2>
+                
+                <form id="equipmentForm" class="space-y-4">
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nama Guru *</label>
+                            <input type="text" id="equipmentTeacherName" required 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   placeholder="Cth: Encik Ahmad Razak">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">No. Telefon *</label>
+                            <input type="tel" id="equipmentPhoneNumber" required 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   placeholder="Cth: 019-9876543">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Kelas/Panel *</label>
+                        <input type="text" id="equipmentClassPanel" required 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="Cth: 5 Cemerlang, Panel Sains">
+                    </div>
+
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Tarikh Pinjam *</label>
+                            <input type="date" id="equipmentBorrowDate" required 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Tarikh Pulang *</label>
+                            <input type="date" id="equipmentReturnDate" required 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Alatan Diperlukan * (Pilih semua yang berkenaan)</label>
+                        <div class="grid md:grid-cols-2 gap-3">
+                            <label class="flex items-center">
+                                <input type="checkbox" name="equipment" value="Kamera Video" class="mr-2">
+                                <span>📹 Kamera Video</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" name="equipment" value="Kamera DSLR" class="mr-2">
+                                <span>📷 Kamera DSLR</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" name="equipment" value="Mikrofon" class="mr-2">
+                                <span>🎤 Mikrofon</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" name="equipment" value="Tripod" class="mr-2">
+                                <span>📐 Tripod</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" name="equipment" value="Lampu Studio" class="mr-2">
+                                <span>💡 Lampu Studio</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" name="equipment" value="Green Screen" class="mr-2">
+                                <span>🟢 Green Screen</span>
+                            </label>
+                        </div>
+                        <div class="mt-3">
+                            <input type="text" id="equipmentOtherEquipment" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   placeholder="Alatan lain (jika ada)">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Tujuan Penggunaan *</label>
+                        <textarea id="equipmentPurpose" required rows="4"
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  placeholder="Sila nyatakan tujuan penggunaan alatan..."></textarea>
+                    </div>
+
+                    <div class="bg-orange-50 p-4 rounded-lg">
+                        <h3 class="font-medium text-orange-800 mb-2">⚠️ Syarat Pinjaman:</h3>
+                        <ul class="text-sm text-orange-700 space-y-1">
+                            <li>• Alatan mesti dipulangkan dalam keadaan baik dan bersih</li>
+                            <li>• Sebarang kerosakan akan dikenakan bayaran gantian</li>
+                            <li>• Tempoh pinjaman maksimum adalah 7 hari</li>
+                            <li>• Peminjam bertanggungjawab sepenuhnya terhadap alatan yang dipinjam</li>
+                        </ul>
+                    </div>
+
+                    <button type="submit" id="equipmentSubmitBtn" 
+                            class="w-full bg-orange-600 text-white py-3 px-4 rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 font-medium">
+                        📷 Hantar Permohonan Pinjaman
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Documentation Tab -->
+        <div id="documentationTab" class="tab-content hidden">
+            <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">📹 Permohonan Dokumentasi Program</h2>
+                
+                <form id="documentationForm" class="space-y-4">
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nama Guru *</label>
+                            <input type="text" id="documentationTeacherName" required 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   placeholder="Cth: Puan Fatimah">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">No. Telefon *</label>
+                            <input type="tel" id="documentationPhoneNumber" required 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   placeholder="Cth: 012-3456789">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Nama Program *</label>
+                        <input type="text" id="documentationProgram" required 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="Cth: Hari Sukan Sekolah, Majlis Graduasi">
+                    </div>
+
+                    <div class="grid md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Tarikh Program *</label>
+                            <input type="date" id="documentationProgramDate" required 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Masa Program *</label>
+                            <input type="text" id="documentationProgramTime" required 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   placeholder="Cth: 8:00 AM - 12:00 PM">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Lokasi *</label>
+                            <input type="text" id="documentationLocation" required 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   placeholder="Cth: Dewan Sekolah">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Jenis Dokumentasi * (Pilih semua yang berkenaan)</label>
+                        <div class="grid md:grid-cols-2 gap-3">
+                            <label class="flex items-center">
+                                <input type="checkbox" name="documentationType" value="Video Dokumentari" class="mr-2">
+                                <span>📹 Video Dokumentari</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" name="documentationType" value="Fotografi" class="mr-2">
+                                <span>📸 Fotografi</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" name="documentationType" value="Live Streaming" class="mr-2">
+                                <span>📡 Live Streaming</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" name="documentationType" value="Rakaman Audio" class="mr-2">
+                                <span>🎵 Rakaman Audio</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Butiran Program *</label>
+                        <textarea id="documentationDetails" required rows="4"
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  placeholder="Sila berikan butiran lengkap mengenai program dan keperluan dokumentasi..."></textarea>
+                    </div>
+
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <h3 class="font-medium text-green-800 mb-2">📋 Maklumat Tambahan:</h3>
+                        <ul class="text-sm text-green-700 space-y-1">
+                            <li>• Permohonan perlu dibuat sekurang-kurangnya 1 minggu sebelum program</li>
+                            <li>• Dokumentasi akan diserahkan dalam tempoh 3-5 hari bekerja</li>
+                            <li>• Format output: MP4 (video), JPEG (foto), MP3 (audio)</li>
+                            <li>• Salinan akan disimpan dalam sistem sekolah untuk rujukan</li>
+                        </ul>
+                    </div>
+
+                    <button type="submit" id="documentationSubmitBtn" 
+                            class="w-full bg-green-600 text-white py-3 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 font-medium">
+                        📹 Hantar Permohonan Dokumentasi
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Status Tab -->
+        <div id="statusTab" class="tab-content hidden">
+            <div class="max-w-4xl mx-auto">
+                <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">📋 Semak Status Tempahan</h2>
+                    
+                    <div class="max-w-md mx-auto mb-8">
+                        <div class="flex space-x-2">
+                            <input type="tel" id="statusPhoneSearch" 
+                                   class="flex-1 px-4 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   placeholder="Masukkan no. telefon anda">
+                            <button id="statusSearchBtn" 
+                                    class="bg-blue-600 text-white px-6 py-2 rounded-r-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                🔍 Cari
+                            </button>
+                        </div>
+                        <p class="text-sm text-gray-600 mt-2 text-center">
+                            Masukkan nombor telefon yang digunakan semasa membuat tempahan
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Search Results -->
+                <div id="statusResults" class="hidden">
+                    <div class="bg-white rounded-lg shadow-lg p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-bold text-gray-800">📝 Tempahan Anda</h3>
+                            <button id="statusClearBtn" class="text-gray-500 hover:text-gray-700 text-sm">
+                                🗑️ Kosongkan
+                            </button>
+                        </div>
+                        
+                        <div id="statusBookingsList" class="space-y-4">
+                            <!-- Results will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- No Results -->
+                <div id="statusNoResults" class="hidden">
+                    <div class="bg-white rounded-lg shadow-lg p-8 text-center">
+                        <div class="text-6xl mb-4">📝</div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Tiada Tempahan Dijumpai</h3>
+                        <p class="text-gray-600 mb-4">
+                            Tiada tempahan dijumpai dengan nombor telefon tersebut.
+                        </p>
+                        <p class="text-sm text-gray-500">
+                            Pastikan anda memasukkan nombor telefon yang sama seperti semasa membuat tempahan.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Schedule Tab -->
+        <div id="scheduleTab" class="tab-content hidden">
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">📅 Jadual Studio TVPSS</h2>
+                    <div class="flex items-center space-x-4">
+                        <button id="prevWeek" class="bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded">
+                            ← Minggu Lepas
+                        </button>
+                        <span id="currentWeek" class="font-medium text-gray-700"></span>
+                        <button id="nextWeek" class="bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded">
+                            Minggu Depan →
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mb-4 flex space-x-4 text-sm">
+                    <div class="flex items-center">
+                        <div class="w-4 h-4 bg-green-200 border-2 border-green-400 rounded mr-2"></div>
+                        <span>Diluluskan</span>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-4 h-4 bg-yellow-200 border-2 border-yellow-400 rounded mr-2"></div>
+                        <span>Menunggu</span>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-4 h-4 bg-red-200 border-2 border-red-400 rounded mr-2"></div>
+                        <span>Ditolak</span>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-4 h-4 bg-gray-200 border-2 border-gray-400 rounded mr-2"></div>
+                        <span>Disekat</span>
+                    </div>
+                </div>
+                
+                <div id="scheduleGrid" class="overflow-x-auto">
+                    <div class="loading text-center py-8 text-gray-500">
+                        Memuatkan jadual...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Tab -->
+        <div id="adminTab" class="tab-content hidden">
+            <!-- Admin Login Form -->
+            <div id="adminLoginForm" class="max-w-md mx-auto bg-white rounded-lg shadow-lg p-6">
+                <div class="text-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">🔐 Panel Admin TVPSS</h2>
+                    <p class="text-gray-600">Sila log masuk dengan akaun admin Firebase</p>
+                </div>
+                
+                <form id="adminLoginFormElement" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email Admin</label>
+                        <input type="email" id="adminEmail" required 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="admin@smktu2.edu.my">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Kata Laluan</label>
+                        <input type="password" id="adminPasswordField" required 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="Masukkan kata laluan">
+                    </div>
+                    
+                    <button type="submit" id="adminLoginBtn" 
+                            class="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium">
+                        🔓 Log Masuk Admin
+                    </button>
+                </form>
+                
+                <div class="mt-4 p-3 bg-blue-50 rounded-lg">
+                    <h4 class="text-sm font-medium text-blue-800 mb-2">🔐 Sistem Keselamatan Baru:</h4>
+                    <ul class="text-xs text-blue-700 space-y-1">
+                        <li>• Menggunakan Firebase Authentication</li>
+                        <li>• Kata laluan disulitkan dengan selamat</li>
+                        <li>• Tiada password hardcoded dalam kod</li>
+                        <li>• Hubungi IT untuk setup akaun admin</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Admin Panel (Hidden until login) -->
+            <div id="adminPanel" class="hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">🔧 Panel Admin TVPSS</h2>
+                        <p class="text-sm text-gray-600">Selamat datang, <span id="adminUserEmail" class="font-medium"></span></p>
+                    </div>
+                    <button id="adminLogoutBtn" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 text-sm">
+                        🚪 Log Keluar
+                    </button>
+                </div>
+                
+                <!-- Admin Stats -->
+                <div class="grid md:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-yellow-100 p-6 rounded-lg text-center">
+                        <div class="text-3xl font-bold text-yellow-800" id="adminPendingCount">0</div>
+                        <div class="text-yellow-600 text-sm">Tempahan Menunggu</div>
+                    </div>
+                    <div class="bg-green-100 p-6 rounded-lg text-center">
+                        <div class="text-3xl font-bold text-green-800" id="adminApprovedTodayCount">0</div>
+                        <div class="text-green-600 text-sm">Diluluskan Hari Ini</div>
+                    </div>
+                    <div class="bg-blue-100 p-6 rounded-lg text-center">
+                        <div class="text-3xl font-bold text-blue-800" id="adminMonthlyCount">0</div>
+                        <div class="text-blue-600 text-sm">Jumlah Bulan Ini</div>
+                    </div>
+                    <div class="bg-purple-100 p-6 rounded-lg text-center">
+                        <div class="text-3xl font-bold text-purple-800" id="adminWeeklyCount">0</div>
+                        <div class="text-purple-600 text-sm">Minggu Ini</div>
+                    </div>
+                </div>
+
+                <!-- Admin Management Sections -->
+                <div class="grid lg:grid-cols-2 gap-8">
+                    <!-- Booking Management -->
+                    <div class="bg-white rounded-lg shadow-lg p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-bold text-gray-800">📝 Pengurusan Tempahan</h3>
+                            <select id="adminStatusFilter" class="px-3 py-1 border border-gray-300 rounded text-sm">
+                                <option value="">Semua Status</option>
+                                <option value="Menunggu">Menunggu</option>
+                                <option value="Diluluskan">Diluluskan</option>
+                                <option value="Ditolak">Ditolak</option>
+                            </select>
+                        </div>
+                        
+                        <div id="adminBookingsList" class="space-y-3 max-h-96 overflow-y-auto">
+                            <div class="loading text-center py-4 text-gray-500">
+                                Memuatkan senarai tempahan...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Block Time Slots -->
+                    <div class="bg-white rounded-lg shadow-lg p-6">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4">🚫 Tutup Ruangan Studio</h3>
+                        
+                        <form id="adminBlockForm" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Tarikh</label>
+                                <input type="date" id="adminBlockDate" required 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 text-sm">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Masa Mula</label>
+                                    <select id="adminBlockStartTime" required 
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 text-sm">
+                                        <option value="">Pilih masa</option>
+                                        <option value="07:30">07:30</option>
+                                        <option value="08:00">08:00</option>
+                                        <option value="08:30">08:30</option>
+                                        <option value="09:00">09:00</option>
+                                        <option value="09:30">09:30</option>
+                                        <option value="10:00">10:00</option>
+                                        <option value="10:30">10:30</option>
+                                        <option value="11:00">11:00</option>
+                                        <option value="11:30">11:30</option>
+                                        <option value="12:00">12:00</option>
+                                        <option value="12:30">12:30</option>
+                                        <option value="13:00">13:00</option>
+                                        <option value="13:30">13:30</option>
+                                        <option value="14:00">14:00</option>
+                                        <option value="14:30">14:30</option>
+                                        <option value="15:00">15:00</option>
+                                        <option value="15:30">15:30</option>
+                                        <option value="16:00">16:00</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Masa Tamat</label>
+                                    <select id="adminBlockEndTime" required 
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 text-sm">
+                                        <option value="">Pilih masa</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Sebab</label>
+                                <textarea id="adminBlockReason" required rows="2"
+                                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
+                                          placeholder="Cth: Program Khas Sekolah"></textarea>
+                            </div>
+
+                            <button type="submit" id="adminBlockSubmitBtn" 
+                                    class="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium text-sm">
+                                🚫 Tutup Ruangan
+                            </button>
+                        </form>
+
+                        <!-- Current Blocked Slots -->
+                        <div class="mt-6">
+                            <h4 class="font-medium text-gray-800 mb-3">Ruangan Ditutup</h4>
+                            <div id="adminBlockedSlotsList" class="space-y-2 max-h-48 overflow-y-auto">
+                                <div class="loading text-center py-2 text-gray-500 text-sm">
+                                    Memuatkan...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="mt-8 bg-white rounded-lg shadow-lg p-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">📋 Aktiviti Terkini</h3>
+                    <div id="adminRecentActivity" class="space-y-3 max-h-64 overflow-y-auto">
+                        <div class="loading text-center py-4 text-gray-500">
+                            Memuatkan aktiviti terkini...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Booking Detail Modal -->
+    <div id="bookingModal" class="modal">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-screen overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-gray-800">📝 Butiran Tempahan</h3>
+                    <button id="closeModal" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+                </div>
+                
+                <div id="modalContent" class="space-y-4">
+                    <!-- Content will be populated by JavaScript -->
+                </div>
+                
+                <div id="modalActions" class="flex space-x-4 mt-6">
+                    <!-- Action buttons will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg">
+        <div class="flex items-center">
+            <span id="toastIcon" class="mr-2">✅</span>
+            <span id="toastMessage">Operasi berjaya!</span>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, addDoc, getDocs, query, orderBy, where, updateDoc, doc, serverTimestamp, onSnapshot, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDw5gBtj6yvPtzs_oqK_ATwj8MH76o2dFI",
+            authDomain: "studiofiveone-booking-peribadi.firebaseapp.com",
+            projectId: "studiofiveone-booking-peribadi",
+            storageBucket: "studiofiveone-booking-peribadi.firebasestorage.app",
+            messagingSenderId: "709355508167",
+            appId: "1:709355508167:web:1e50aafcaab4fd8c1809e2",
+            measurementId: "G-J3VGLK0JVT"
+        };
+        
+        try {
+            // Initialize Firebase
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
+            const auth = getAuth(app);
+            
+            // Make Firebase available globally
+            window.db = db;
+            window.auth = auth;
+            window.firestore = { 
+                collection, addDoc, getDocs, query, orderBy, where, 
+                updateDoc, doc, serverTimestamp, onSnapshot, deleteDoc 
+            };
+            window.firebaseAuth = {
+                signInWithEmailAndPassword, signOut, onAuthStateChanged
+            };
+            
+            console.log('✅ Firebase initialized successfully');
+            
+            // Update connection status
+            updateConnectionStatus(true);
+            
+            // Set up real-time listeners
+            setupRealtimeListeners();
+            
+            // Set up auth state listener
+            setupAuthStateListener();
+            
+        } catch (error) {
+            console.error('❌ Firebase initialization error:', error);
+            updateConnectionStatus(false);
+            showToast('❌ Ralat menyambung ke pangkalan data. Sila muat semula halaman.', 'error');
+        }
+    </script>
+
+    <!-- Main Application JavaScript -->
+    <script>
+        // Global variables
+        let currentWeekStart = new Date();
+        let bookingsData = [];
+        let blockedSlots = [];
+        let currentBooking = null;
+        let currentUser = null;
+        
+        const TIME_SLOTS = [
+            '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+            '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30'
+        ];
+
+        // Initialize application
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Application starting...');
+            initializeApp();
+        });
+
+        function initializeApp() {
+            setupEventListeners();
+            setupTimeSlotDependencies();
+            
+            // Wait for Firebase to be ready before loading data
+            const checkFirebase = setInterval(() => {
+                if (window.db && window.firestore && window.auth && window.firebaseAuth) {
+                    clearInterval(checkFirebase);
+                    loadInitialData();
+                }
+            }, 100);
+            
+            // Set current week to start of this week
+            currentWeekStart = getStartOfWeek(new Date());
+            updateWeekDisplay();
+        }
+
+        function setupAuthStateListener() {
+            if (!window.firebaseAuth) return;
+            
+            window.firebaseAuth.onAuthStateChanged(window.auth, (user) => {
+                currentUser = user;
+                
+                if (user) {
+                    console.log('✅ Admin logged in:', user.email);
+                    document.getElementById('adminLoginForm').classList.add('hidden');
+                    document.getElementById('adminPanel').classList.remove('hidden');
+                    document.getElementById('adminUserEmail').textContent = user.email;
+                    document.getElementById('adminStatus').classList.remove('hidden');
+                    
+                    // Load admin data
+                    loadAdminData();
+                    
+                } else {
+                    console.log('👤 Admin logged out');
+                    document.getElementById('adminLoginForm').classList.remove('hidden');
+                    document.getElementById('adminPanel').classList.add('hidden');
+                    document.getElementById('adminStatus').classList.add('hidden');
+                    
+                    // Clear form
+                    document.getElementById('adminEmail').value = '';
+                    document.getElementById('adminPasswordField').value = '';
+                }
+            });
+        }
+
+        function setupEventListeners() {
+            // Tab navigation
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => switchTab(e.target.dataset.tab));
+            });
+
+            // Form submissions
+            document.getElementById('studioForm').addEventListener('submit', handleStudioSubmission);
+            document.getElementById('equipmentForm').addEventListener('submit', handleEquipmentSubmission);
+            document.getElementById('documentationForm').addEventListener('submit', handleDocumentationSubmission);
+            document.getElementById('adminBlockForm').addEventListener('submit', handleAdminBlockSlot);
+            document.getElementById('adminLoginFormElement').addEventListener('submit', handleAdminLogin);
+
+            // Schedule navigation
+            document.getElementById('prevWeek').addEventListener('click', () => navigateWeek(-1));
+            document.getElementById('nextWeek').addEventListener('click', () => navigateWeek(1));
+
+            // Admin filters
+            document.getElementById('adminStatusFilter').addEventListener('change', loadAdminBookings);
+
+            // Modal
+            document.getElementById('closeModal').addEventListener('click', closeModal);
+            document.getElementById('bookingModal').addEventListener('click', (e) => {
+                if (e.target.id === 'bookingModal') closeModal();
+            });
+
+            // Admin block time dependencies
+            document.getElementById('adminBlockStartTime').addEventListener('change', updateAdminBlockEndTimeOptions);
+
+            // Admin logout
+            document.getElementById('adminLogoutBtn').addEventListener('click', handleAdminLogout);
+
+            // Status search
+            document.getElementById('statusSearchBtn').addEventListener('click', handleStatusSearch);
+            document.getElementById('statusPhoneSearch').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleStatusSearch();
+            });
+            document.getElementById('statusClearBtn').addEventListener('click', clearStatusSearch);
+        }
+
+        function setupTimeSlotDependencies() {
+            // Studio form time slot dependency
+            document.getElementById('studioStartTime').addEventListener('change', function() {
+                const startTime = this.value;
+                const endTimeSelect = document.getElementById('studioEndTime');
+                
+                // Clear end time options
+                endTimeSelect.innerHTML = '<option value="">Pilih masa</option>';
+                
+                if (startTime) {
+                    const startIndex = TIME_SLOTS.indexOf(startTime);
+                    const availableEndTimes = TIME_SLOTS.slice(startIndex + 1);
+                    
+                    availableEndTimes.forEach(time => {
+                        endTimeSelect.add(new Option(time, time));
+                    });
+                }
+            });
+        }
+
+        function updateAdminBlockEndTimeOptions() {
+            const startTime = document.getElementById('adminBlockStartTime').value;
+            const endSelect = document.getElementById('adminBlockEndTime');
+            
+            // Clear end time options
+            endSelect.innerHTML = '<option value="">Pilih masa</option>';
+            
+            if (startTime) {
+                const startIndex = TIME_SLOTS.indexOf(startTime);
+                const availableEndTimes = TIME_SLOTS.slice(startIndex + 1);
+                
+                availableEndTimes.forEach(time => {
+                    endSelect.add(new Option(time, time));
+                });
+            }
+        }
+
+        async function handleStudioSubmission(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('studioSubmitBtn');
+            const originalText = submitBtn.textContent;
+            
+            try {
+                submitBtn.textContent = '⏳ Menghantar...';
+                submitBtn.disabled = true;
+                
+                // Check if Firebase is available
+                if (!window.db || !window.firestore) {
+                    showToast('❌ Sistem belum siap. Sila tunggu sebentar dan cuba lagi.', 'error');
+                    return;
+                }
+                
+                // Validate form data
+                const teacherName = document.getElementById('studioTeacherName').value.trim();
+                const phoneNumber = document.getElementById('studioPhoneNumber').value.trim();
+                const classPanel = document.getElementById('studioClassPanel').value.trim();
+                const bookingDate = document.getElementById('studioBookingDate').value;
+                const startTime = document.getElementById('studioStartTime').value;
+                const endTime = document.getElementById('studioEndTime').value;
+                const studioPurpose = document.getElementById('studioStudioPurpose').value.trim();
+                
+                if (!teacherName || !phoneNumber || !classPanel || !bookingDate || !startTime || !endTime || !studioPurpose) {
+                    showToast('⚠️ Sila lengkapkan semua maklumat yang diperlukan.', 'error');
+                    return;
+                }
+                
+                // Create form data with serverTimestamp for better Firebase compatibility
+                const formData = {
+                    type: 'studio',
+                    teacherName: teacherName,
+                    phoneNumber: phoneNumber,
+                    classPanel: classPanel,
+                    bookingDate: bookingDate,
+                    startTime: startTime,
+                    endTime: endTime,
+                    studioPurpose: studioPurpose,
+                    status: 'Menunggu',
+                    submissionDate: window.firestore.serverTimestamp(),
+                    createdAt: window.firestore.serverTimestamp()
+                };
+
+                console.log('📝 Submitting booking data:', formData);
+
+                // Check for conflicts
+                const hasConflict = await checkBookingConflict(formData.bookingDate, formData.startTime, formData.endTime);
+                if (hasConflict) {
+                    showToast('⚠️ Masa yang dipilih telah ditempah. Sila pilih masa lain.', 'error');
+                    return;
+                }
+
+                // Submit directly to Firebase
+                const docRef = await window.firestore.addDoc(window.firestore.collection(window.db, 'bookings'), formData);
+                console.log('✅ Booking submitted successfully with ID:', docRef.id);
+                
+                showToast('✅ Tempahan studio berjaya dihantar! Menunggu kelulusan penyelaras.', 'success');
+                document.getElementById('studioForm').reset();
+                
+            } catch (error) {
+                console.error('❌ Error submitting studio booking:', error);
+                
+                // Handle specific Firebase errors with detailed messages
+                if (error.code === 'permission-denied') {
+                    showToast('❌ Ralat Kebenaran: Sila semak Firebase Security Rules. Pastikan rules membenarkan penulisan data.', 'error');
+                } else if (error.code === 'unavailable') {
+                    showToast('❌ Perkhidmatan Firebase tidak tersedia. Sila cuba lagi dalam beberapa minit.', 'error');
+                } else if (error.code === 'unauthenticated') {
+                    showToast('❌ Ralat pengesahan. Sila muat semula halaman dan cuba lagi.', 'error');
+                } else {
+                    showToast('❌ Ralat menghantar tempahan: ' + (error.message || 'Sila cuba lagi'), 'error');
+                }
+            } finally {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        }
+
+        async function handleEquipmentSubmission(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('equipmentSubmitBtn');
+            const originalText = submitBtn.textContent;
+            
+            try {
+                submitBtn.textContent = '⏳ Menghantar...';
+                submitBtn.disabled = true;
+                
+                // Check if Firebase is available
+                if (!window.db || !window.firestore) {
+                    showToast('❌ Sistem belum siap. Sila tunggu sebentar dan cuba lagi.', 'error');
+                    return;
+                }
+                
+                const equipmentCheckboxes = document.querySelectorAll('input[name="equipment"]:checked');
+                const selectedEquipment = Array.from(equipmentCheckboxes).map(cb => cb.value);
+                
+                if (selectedEquipment.length === 0) {
+                    showToast('⚠️ Sila pilih sekurang-kurangnya satu alatan.', 'error');
+                    return;
+                }
+                
+                const formData = {
+                    type: 'equipment',
+                    teacherName: document.getElementById('equipmentTeacherName').value.trim(),
+                    phoneNumber: document.getElementById('equipmentPhoneNumber').value.trim(),
+                    classPanel: document.getElementById('equipmentClassPanel').value.trim(),
+                    borrowDate: document.getElementById('equipmentBorrowDate').value,
+                    returnDate: document.getElementById('equipmentReturnDate').value,
+                    equipment: selectedEquipment,
+                    otherEquipment: document.getElementById('equipmentOtherEquipment').value.trim(),
+                    purpose: document.getElementById('equipmentPurpose').value.trim(),
+                    status: 'Menunggu',
+                    submissionDate: window.firestore.serverTimestamp()
+                };
+
+                console.log('📷 Submitting equipment booking:', formData);
+
+                await window.firestore.addDoc(window.firestore.collection(window.db, 'bookings'), formData);
+                
+                showToast('✅ Permohonan pinjaman alatan berjaya dihantar!', 'success');
+                document.getElementById('equipmentForm').reset();
+                
+            } catch (error) {
+                console.error('❌ Error submitting equipment booking:', error);
+                showToast('❌ Ralat menghantar permohonan: ' + (error.message || 'Sila cuba lagi'), 'error');
+            } finally {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        }
+
+        async function handleDocumentationSubmission(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('documentationSubmitBtn');
+            const originalText = submitBtn.textContent;
+            
+            try {
+                submitBtn.textContent = '⏳ Menghantar...';
+                submitBtn.disabled = true;
+                
+                // Check if Firebase is available
+                if (!window.db || !window.firestore) {
+                    showToast('❌ Sistem belum siap. Sila tunggu sebentar dan cuba lagi.', 'error');
+                    return;
+                }
+                
+                const documentationCheckboxes = document.querySelectorAll('input[name="documentationType"]:checked');
+                const selectedDocumentation = Array.from(documentationCheckboxes).map(cb => cb.value);
+                
+                if (selectedDocumentation.length === 0) {
+                    showToast('⚠️ Sila pilih sekurang-kurangnya satu jenis dokumentasi.', 'error');
+                    return;
+                }
+                
+                const formData = {
+                    type: 'documentation',
+                    teacherName: document.getElementById('documentationTeacherName').value.trim(),
+                    phoneNumber: document.getElementById('documentationPhoneNumber').value.trim(),
+                    program: document.getElementById('documentationProgram').value.trim(),
+                    programDate: document.getElementById('documentationProgramDate').value,
+                    programTime: document.getElementById('documentationProgramTime').value.trim(),
+                    location: document.getElementById('documentationLocation').value.trim(),
+                    documentationType: selectedDocumentation,
+                    details: document.getElementById('documentationDetails').value.trim(),
+                    status: 'Menunggu',
+                    submissionDate: window.firestore.serverTimestamp()
+                };
+
+                console.log('📹 Submitting documentation booking:', formData);
+
+                await window.firestore.addDoc(window.firestore.collection(window.db, 'bookings'), formData);
+                
+                showToast('✅ Permohonan dokumentasi program berjaya dihantar!', 'success');
+                document.getElementById('documentationForm').reset();
+                
+            } catch (error) {
+                console.error('❌ Error submitting documentation booking:', error);
+                showToast('❌ Ralat menghantar permohonan: ' + (error.message || 'Sila cuba lagi'), 'error');
+            } finally {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        }
+
+        async function handleAdminLogin(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('adminEmail').value.trim();
+            const password = document.getElementById('adminPasswordField').value;
+            const submitBtn = document.getElementById('adminLoginBtn');
+            const originalText = submitBtn.textContent;
+            
+            try {
+                submitBtn.textContent = '⏳ Mengesahkan...';
+                submitBtn.disabled = true;
+                
+                if (!window.firebaseAuth || !window.auth) {
+                    showToast('❌ Sistem pengesahan belum siap. Sila tunggu sebentar.', 'error');
+                    return;
+                }
+                
+                // Sign in with Firebase Auth
+                const userCredential = await window.firebaseAuth.signInWithEmailAndPassword(window.auth, email, password);
+                console.log('✅ Admin login successful:', userCredential.user.email);
+                
+                showToast('✅ Berjaya log masuk sebagai admin!', 'success');
+                
+            } catch (error) {
+                console.error('❌ Admin login error:', error);
+                
+                let errorMessage = 'Ralat log masuk. Sila cuba lagi.';
+                
+                switch (error.code) {
+                    case 'auth/user-not-found':
+                        errorMessage = 'Akaun admin tidak dijumpai. Sila semak email.';
+                        break;
+                    case 'auth/wrong-password':
+                        errorMessage = 'Kata laluan tidak betul. Sila cuba lagi.';
+                        break;
+                    case 'auth/invalid-email':
+                        errorMessage = 'Format email tidak sah.';
+                        break;
+                    case 'auth/too-many-requests':
+                        errorMessage = 'Terlalu banyak percubaan. Sila tunggu sebentar.';
+                        break;
+                    case 'auth/network-request-failed':
+                        errorMessage = 'Masalah sambungan internet. Sila cuba lagi.';
+                        break;
+                }
+                
+                showToast('❌ ' + errorMessage, 'error');
+                
+            } finally {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        }
+
+        async function handleAdminLogout() {
+            try {
+                await window.firebaseAuth.signOut(window.auth);
+                showToast('✅ Berjaya log keluar dari panel admin.', 'success');
+            } catch (error) {
+                console.error('❌ Logout error:', error);
+                showToast('❌ Ralat log keluar. Sila muat semula halaman.', 'error');
+            }
+        }
+
+        async function handleAdminBlockSlot(e) {
+            e.preventDefault();
+            
+            // Check if user is authenticated
+            if (!currentUser) {
+                showToast('❌ Sila log masuk sebagai admin terlebih dahulu.', 'error');
+                return;
+            }
+            
+            const submitBtn = document.getElementById('adminBlockSubmitBtn');
+            const originalText = submitBtn.textContent;
+            
+            try {
+                submitBtn.textContent = '⏳ Memproses...';
+                submitBtn.disabled = true;
+                
+                const formData = {
+                    date: document.getElementById('adminBlockDate').value,
+                    startTime: document.getElementById('adminBlockStartTime').value,
+                    endTime: document.getElementById('adminBlockEndTime').value,
+                    reason: document.getElementById('adminBlockReason').value,
+                    createdAt: window.firestore.serverTimestamp(),
+                    createdBy: currentUser.email
+                };
+
+                // Check for existing bookings in this time slot
+                const hasBookings = await checkExistingBookings(formData.date, formData.startTime, formData.endTime);
+                if (hasBookings) {
+                    showToast('⚠️ Terdapat tempahan dalam masa ini. Sila semak jadual terlebih dahulu.', 'error');
+                    return;
+                }
+
+                await window.firestore.addDoc(window.firestore.collection(window.db, 'blockedSlots'), formData);
+                
+                showToast('✅ Ruangan berjaya ditutup!', 'success');
+                document.getElementById('adminBlockForm').reset();
+                
+            } catch (error) {
+                console.error('Error blocking slot:', error);
+                showToast('❌ Ralat menutup ruangan. Sila cuba lagi.', 'error');
+            } finally {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        }
+
+        async function checkBookingConflict(date, startTime, endTime) {
+            try {
+                if (!window.db || !window.firestore) return false;
+                
+                const bookingsRef = window.firestore.collection(window.db, 'bookings');
+                const q = window.firestore.query(
+                    bookingsRef,
+                    window.firestore.where('bookingDate', '==', date),
+                    window.firestore.where('status', 'in', ['Menunggu', 'Diluluskan'])
+                );
+                
+                const snapshot = await window.firestore.getDocs(q);
+                
+                for (const doc of snapshot.docs) {
+                    const booking = doc.data();
+                    if (timesOverlap(startTime, endTime, booking.startTime, booking.endTime)) {
+                        return true;
+                    }
+                }
+                
+                // Check blocked slots
+                const blockedRef = window.firestore.collection(window.db, 'blockedSlots');
+                const blockedQuery = window.firestore.query(
+                    blockedRef,
+                    window.firestore.where('date', '==', date)
+                );
+                
+                const blockedSnapshot = await window.firestore.getDocs(blockedQuery);
+                
+                for (const doc of blockedSnapshot.docs) {
+                    const blocked = doc.data();
+                    if (timesOverlap(startTime, endTime, blocked.startTime, blocked.endTime)) {
+                        return true;
+                    }
+                }
+                
+                return false;
+            } catch (error) {
+                console.error('Error checking booking conflict:', error);
+                return false;
+            }
+        }
+
+        async function checkExistingBookings(date, startTime, endTime) {
+            try {
+                const bookingsRef = window.firestore.collection(window.db, 'bookings');
+                const q = window.firestore.query(
+                    bookingsRef,
+                    window.firestore.where('bookingDate', '==', date),
+                    window.firestore.where('status', 'in', ['Menunggu', 'Diluluskan'])
+                );
+                
+                const snapshot = await window.firestore.getDocs(q);
+                
+                for (const doc of snapshot.docs) {
+                    const booking = doc.data();
+                    if (timesOverlap(startTime, endTime, booking.startTime, booking.endTime)) {
+                        return true;
+                    }
+                }
+                
+                return false;
+            } catch (error) {
+                console.error('Error checking existing bookings:', error);
+                return false;
+            }
+        }
+
+        function timesOverlap(start1, end1, start2, end2) {
+            return start1 < end2 && end1 > start2;
+        }
+
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-blue-500', 'bg-blue-50', 'text-blue-600');
+                btn.classList.add('border-transparent', 'text-gray-600');
+            });
+            
+            const activeTab = document.querySelector(`[data-tab="${tabName}"]`);
+            activeTab.classList.remove('border-transparent', 'text-gray-600');
+            activeTab.classList.add('border-blue-500', 'bg-blue-50', 'text-blue-600');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            document.getElementById(`${tabName}Tab`).classList.remove('hidden');
+
+            // Load data for specific tabs
+            if (tabName === 'schedule') {
+                loadScheduleData();
+            } else if (tabName === 'admin') {
+                // Admin data will be loaded automatically by auth state listener
+                if (currentUser) {
+                    loadAdminData();
+                }
+            } else if (tabName === 'status') {
+                clearStatusSearch();
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const messageEl = document.getElementById('toastMessage');
+            
+            // Set icon and color based on type
+            if (type === 'success') {
+                icon.textContent = '✅';
+                toast.className = 'toast bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg';
+            } else {
+                icon.textContent = '❌';
+                toast.className = 'toast bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg';
+            }
+            
+            messageEl.textContent = message;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 5000);
+        }
+
+        function updateConnectionStatus(connected) {
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            const lastSync = document.getElementById('lastSync');
+            
+            if (connected) {
+                statusDot.className = 'w-2 h-2 rounded-full bg-green-400 mr-2';
+                statusText.textContent = 'Bersambung';
+                lastSync.textContent = `🔄 Disegerak: ${new Date().toLocaleTimeString('ms-MY')}`;
+            } else {
+                statusDot.className = 'w-2 h-2 rounded-full bg-red-400 mr-2';
+                statusText.textContent = 'Luar Talian';
+                lastSync.textContent = '⚠️ Sambungan terputus';
+            }
+        }
+
+        async function loadInitialData() {
+            try {
+                console.log('📊 Loading initial data...');
+                await loadBookingsData();
+                await loadBlockedSlotsData();
+                updateConnectionStatus(true);
+                console.log('✅ Initial data loaded successfully');
+            } catch (error) {
+                console.error('❌ Error loading initial data:', error);
+                updateConnectionStatus(false);
+            }
+        }
+
+        async function loadBookingsData() {
+            try {
+                if (!window.db || !window.firestore) return;
+                
+                const bookingsRef = window.firestore.collection(window.db, 'bookings');
+                
+                let snapshot;
+                try {
+                    const q = window.firestore.query(bookingsRef, window.firestore.orderBy('submissionDate', 'desc'));
+                    snapshot = await window.firestore.getDocs(q);
+                } catch (orderError) {
+                    console.log('OrderBy failed, using simple query:', orderError);
+                    snapshot = await window.firestore.getDocs(bookingsRef);
+                }
+                
+                bookingsData = [];
+                snapshot.forEach(doc => {
+                    bookingsData.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                
+                console.log('📝 Loaded bookings data:', bookingsData.length, 'bookings');
+                
+            } catch (error) {
+                console.error('❌ Error loading bookings:', error);
+            }
+        }
+
+        async function loadBlockedSlotsData() {
+            try {
+                if (!window.db || !window.firestore) return;
+                
+                const blockedRef = window.firestore.collection(window.db, 'blockedSlots');
+                const snapshot = await window.firestore.getDocs(blockedRef);
+                
+                blockedSlots = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                
+                console.log('🚫 Loaded blocked slots:', blockedSlots.length, 'slots');
+                
+            } catch (error) {
+                console.error('❌ Error loading blocked slots:', error);
+            }
+        }
+
+        function setupRealtimeListeners() {
+            console.log('🔄 Setting up real-time listeners...');
+            
+            // Wait for Firebase to be ready
+            const setupListeners = () => {
+                if (!window.db || !window.firestore) {
+                    setTimeout(setupListeners, 1000);
+                    return;
+                }
+                
+                // Listen for booking changes
+                const bookingsRef = window.firestore.collection(window.db, 'bookings');
+                window.firestore.onSnapshot(bookingsRef, (snapshot) => {
+                    console.log('📊 Real-time update received:', snapshot.docs.length, 'bookings');
+                    
+                    const oldLength = bookingsData.length;
+                    bookingsData = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+                    
+                    updateConnectionStatus(true);
+                    
+                    // Refresh current tab if needed
+                    const activeTab = document.querySelector('.tab-btn.border-blue-500')?.dataset?.tab;
+                    
+                    if (activeTab === 'schedule') {
+                        loadScheduleData();
+                    } else if (activeTab === 'admin' && currentUser) {
+                        loadAdminData();
+                    }
+                    
+                    // Show notification for new bookings
+                    if (bookingsData.length > oldLength) {
+                        showToast(`📝 ${bookingsData.length - oldLength} tempahan baru diterima!`, 'success');
+                    }
+                    
+                }, (error) => {
+                    console.error('❌ Real-time listener error:', error);
+                    updateConnectionStatus(false);
+                });
+
+                // Listen for blocked slots changes
+                const blockedRef = window.firestore.collection(window.db, 'blockedSlots');
+                window.firestore.onSnapshot(blockedRef, (snapshot) => {
+                    console.log('🚫 Blocked slots updated:', snapshot.docs.length);
+                    loadBlockedSlotsData();
+                    
+                    const activeTab = document.querySelector('.tab-btn.border-blue-500')?.dataset?.tab;
+                    if (activeTab === 'admin' && currentUser) {
+                        loadAdminBlockedSlots();
+                    } else if (activeTab === 'schedule') {
+                        loadScheduleData();
+                    }
+                });
+                
+                console.log('✅ Real-time listeners set up successfully');
+            };
+            
+            setupListeners();
+        }
+
+        function getStartOfWeek(date) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            return new Date(d.setDate(diff));
+        }
+
+        function navigateWeek(direction) {
+            currentWeekStart.setDate(currentWeekStart.getDate() + (direction * 7));
+            updateWeekDisplay();
+            loadScheduleData();
+        }
+
+        function updateWeekDisplay() {
+            const endOfWeek = new Date(currentWeekStart);
+            endOfWeek.setDate(endOfWeek.getDate() + 6);
+            
+            const startStr = currentWeekStart.toLocaleDateString('ms-MY');
+            const endStr = endOfWeek.toLocaleDateString('ms-MY');
+            
+            document.getElementById('currentWeek').textContent = `${startStr} - ${endStr}`;
+        }
+
+        function loadScheduleData() {
+            const scheduleGrid = document.getElementById('scheduleGrid');
+            
+            let html = `
+                <div class="min-w-full">
+                    <div class="grid grid-cols-8 gap-1 mb-2">
+                        <div class="p-2 font-medium text-center bg-gray-100">Masa</div>
+            `;
+            
+            const days = ['Isnin', 'Selasa', 'Rabu', 'Khamis', 'Jumaat', 'Sabtu', 'Ahad'];
+            days.forEach(day => {
+                html += `<div class="p-2 font-medium text-center bg-gray-100">${day}</div>`;
+            });
+            
+            html += '</div>';
+            
+            TIME_SLOTS.forEach(time => {
+                html += `<div class="grid grid-cols-8 gap-1 mb-1">`;
+                html += `<div class="p-2 text-sm font-medium text-center bg-gray-50">${time}</div>`;
+                
+                for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+                    const currentDate = new Date(currentWeekStart);
+                    currentDate.setDate(currentDate.getDate() + dayOffset);
+                    const dateStr = currentDate.toISOString().split('T')[0];
+                    
+                    const booking = findBookingForSlot(dateStr, time);
+                    const blocked = findBlockedSlot(dateStr, time);
+                    
+                    if (booking) {
+                        const statusColor = booking.status === 'Diluluskan' ? 'bg-green-100 border-green-300' : 
+                                          booking.status === 'Ditolak' ? 'bg-red-100 border-red-300' : 
+                                          'bg-yellow-100 border-yellow-300';
+                        html += `
+                            <div class="time-slot p-1 text-xs border-2 ${statusColor} rounded cursor-pointer" 
+                                 onclick="viewBookingDetails('${booking.id}')">
+                                <div class="font-medium">${booking.teacherName}</div>
+                                <div class="text-gray-600">${booking.classPanel}</div>
+                                <div class="text-xs mt-1 px-1 py-0.5 rounded text-white ${
+                                    booking.status === 'Diluluskan' ? 'bg-green-500' : 
+                                    booking.status === 'Ditolak' ? 'bg-red-500' : 'bg-yellow-500'
+                                }">${booking.status}</div>
+                            </div>
+                        `;
+                    } else if (blocked) {
+                        html += `
+                            <div class="time-slot p-1 text-xs border-2 bg-gray-200 border-gray-400 rounded">
+                                <div class="font-medium text-gray-700">🚫 Disekat</div>
+                                <div class="text-gray-600">${blocked.reason}</div>
+                            </div>
+                        `;
+                    } else {
+                        html += `<div class="time-slot p-2 border border-gray-200 rounded bg-white hover:bg-gray-50"></div>`;
+                    }
+                }
+                
+                html += '</div>';
+            });
+            
+            html += '</div>';
+            scheduleGrid.innerHTML = html;
+        }
+
+        function findBookingForSlot(date, time) {
+            return bookingsData.find(booking => 
+                booking.bookingDate === date && 
+                booking.startTime <= time && 
+                booking.endTime > time
+            );
+        }
+
+        function findBlockedSlot(date, time) {
+            return blockedSlots.find(blocked => 
+                blocked.date === date && 
+                blocked.startTime <= time && 
+                blocked.endTime > time
+            );
+        }
+
+        function loadAdminData() {
+            if (!currentUser) return;
+            
+            loadAdminStats();
+            loadAdminBookings();
+            loadAdminBlockedSlots();
+            loadAdminRecentActivity();
+        }
+
+        function loadAdminStats() {
+            // Calculate stats
+            const pendingBookings = bookingsData.filter(b => b.status === 'Menunggu').length;
+            const today = new Date().toISOString().split('T')[0];
+            const approvedToday = bookingsData.filter(b => 
+                b.status === 'Diluluskan' && 
+                b.bookingDate === today
+            ).length;
+            
+            const currentMonth = new Date().getMonth();
+            const currentYear = new Date().getFullYear();
+            const monthlyBookings = bookingsData.filter(b => {
+                const bookingDate = new Date(b.bookingDate || b.programDate || b.borrowDate);
+                return bookingDate.getMonth() === currentMonth && bookingDate.getFullYear() === currentYear;
+            }).length;
+
+            // Calculate weekly bookings
+            const weekStart = new Date();
+            weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            
+            const weeklyBookings = bookingsData.filter(b => {
+                const bookingDate = new Date(b.bookingDate || b.programDate || b.borrowDate);
+                return bookingDate >= weekStart && bookingDate <= weekEnd;
+            }).length;
+            
+            // Update stats
+            document.getElementById('adminPendingCount').textContent = pendingBookings;
+            document.getElementById('adminApprovedTodayCount').textContent = approvedToday;
+            document.getElementById('adminMonthlyCount').textContent = monthlyBookings;
+            document.getElementById('adminWeeklyCount').textContent = weeklyBookings;
+        }
+
+        function loadAdminBookings() {
+            const statusFilter = document.getElementById('adminStatusFilter').value;
+            const bookingsList = document.getElementById('adminBookingsList');
+            
+            let filteredBookings = bookingsData;
+            if (statusFilter) {
+                filteredBookings = filteredBookings.filter(b => b.status === statusFilter);
+            }
+            
+            // Sort by submission date (newest first)
+            filteredBookings.sort((a, b) => {
+                const dateA = a.submissionDate?.toDate?.() || new Date(0);
+                const dateB = b.submissionDate?.toDate?.() || new Date(0);
+                return dateB - dateA;
+            });
+            
+            if (filteredBookings.length === 0) {
+                bookingsList.innerHTML = `
+                    <div class="text-center py-4 text-gray-500 text-sm">
+                        📝 Tiada tempahan dijumpai
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            filteredBookings.slice(0, 10).forEach(booking => {
+                const statusColor = booking.status === 'Diluluskan' ? 'bg-green-100 text-green-800' : 
+                                  booking.status === 'Ditolak' ? 'bg-red-100 text-red-800' : 
+                                  'bg-yellow-100 text-yellow-800';
+                
+                const submissionDate = booking.submissionDate?.toDate?.() || new Date();
+                
+                const typeIcon = booking.type === 'equipment' ? '📷' : 
+                               booking.type === 'documentation' ? '📹' : '📝';
+                
+                html += `
+                    <div class="border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow cursor-pointer"
+                         onclick="viewBookingDetails('${booking.id}')">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <div class="flex items-center mb-1">
+                                    <span class="text-sm mr-1">${typeIcon}</span>
+                                    <span class="font-medium text-sm">${booking.teacherName}</span>
+                                </div>
+                                <p class="text-xs text-gray-600">${booking.classPanel || booking.program || 'N/A'}</p>
+                            </div>
+                            <span class="px-2 py-1 rounded-full text-xs font-medium ${statusColor}">
+                                ${booking.status}
+                            </span>
+                        </div>
+                        
+                        <div class="text-xs text-gray-500">
+                            ${booking.bookingDate ? `📅 ${new Date(booking.bookingDate).toLocaleDateString('ms-MY')}` : 
+                              booking.programDate ? `📅 ${new Date(booking.programDate).toLocaleDateString('ms-MY')}` :
+                              booking.borrowDate ? `📅 ${new Date(booking.borrowDate).toLocaleDateString('ms-MY')}` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            bookingsList.innerHTML = html;
+        }
+
+        function loadAdminBlockedSlots() {
+            const blockedSlotsList = document.getElementById('adminBlockedSlotsList');
+            
+            if (blockedSlots.length === 0) {
+                blockedSlotsList.innerHTML = `
+                    <div class="text-center py-4 text-gray-500 text-xs">
+                        🚫 Tiada ruangan ditutup
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            blockedSlots.slice(0, 5).forEach(blocked => {
+                html += `
+                    <div class="border border-red-200 rounded-lg p-2 bg-red-50">
+                        <div class="flex justify-between items-start mb-1">
+                            <div>
+                                <p class="font-medium text-red-800 text-sm">${new Date(blocked.date).toLocaleDateString('ms-MY')}</p>
+                                <p class="text-red-700 text-xs">⏰ ${blocked.startTime} - ${blocked.endTime}</p>
+                            </div>
+                            <button onclick="removeBlockedSlot('${blocked.id}')" 
+                                    class="text-red-600 hover:text-red-800 text-xs">
+                                🗑️
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-700">${blocked.reason}</p>
+                    </div>
+                `;
+            });
+            
+            blockedSlotsList.innerHTML = html;
+        }
+
+        function loadAdminRecentActivity() {
+            const recentActivity = document.getElementById('adminRecentActivity');
+            
+            // Get recent bookings (last 10)
+            const recentBookings = bookingsData
+                .sort((a, b) => {
+                    const dateA = a.submissionDate?.toDate?.() || new Date(0);
+                    const dateB = b.submissionDate?.toDate?.() || new Date(0);
+                    return dateB - dateA;
+                })
+                .slice(0, 5);
+            
+            if (recentBookings.length === 0) {
+                recentActivity.innerHTML = `
+                    <div class="text-center py-4 text-gray-500">
+                        📝 Tiada aktiviti terkini
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            recentBookings.forEach(booking => {
+                const submissionDate = booking.submissionDate?.toDate?.() || new Date();
+                const statusColor = booking.status === 'Diluluskan' ? 'text-green-600' : 
+                                  booking.status === 'Ditolak' ? 'text-red-600' : 'text-yellow-600';
+                
+                const typeIcon = booking.type === 'equipment' ? '📷' : 
+                               booking.type === 'documentation' ? '📹' : '📝';
+                
+                html += `
+                    <div class="border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow cursor-pointer"
+                         onclick="viewBookingDetails('${booking.id}')">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="flex items-center mb-1">
+                                    <span class="text-sm mr-2">${typeIcon}</span>
+                                    <span class="font-medium text-sm">${booking.teacherName}</span>
+                                    <span class="ml-2 text-xs ${statusColor}">${booking.status}</span>
+                                </div>
+                                <p class="text-xs text-gray-600">${booking.classPanel || booking.program || 'N/A'}</p>
+                            </div>
+                            <div class="text-xs text-gray-500">
+                                ${submissionDate.toLocaleDateString('ms-MY')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            recentActivity.innerHTML = html;
+        }
+
+        function viewBookingDetails(bookingId) {
+            currentBooking = bookingsData.find(b => b.id === bookingId);
+            if (!currentBooking) return;
+            
+            const modal = document.getElementById('bookingModal');
+            const modalContent = document.getElementById('modalContent');
+            const modalActions = document.getElementById('modalActions');
+            
+            // Build content based on booking type
+            let contentHtml = '';
+            
+            if (currentBooking.type === 'equipment') {
+                contentHtml = `
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-bold text-gray-800 mb-2">📋 Maklumat Pemohon</h4>
+                            <p><strong>Nama:</strong> ${currentBooking.teacherName}</p>
+                            <p><strong>Telefon:</strong> ${currentBooking.phoneNumber}</p>
+                            <p><strong>Kelas/Panel:</strong> ${currentBooking.classPanel}</p>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-800 mb-2">📅 Maklumat Pinjaman</h4>
+                            <p><strong>Tarikh Pinjam:</strong> ${new Date(currentBooking.borrowDate).toLocaleDateString('ms-MY')}</p>
+                            <p><strong>Tarikh Pulang:</strong> ${new Date(currentBooking.returnDate).toLocaleDateString('ms-MY')}</p>
+                            <p><strong>Status:</strong> <span class="px-2 py-1 rounded text-sm ${
+                                currentBooking.status === 'Diluluskan' ? 'bg-green-100 text-green-800' : 
+                                currentBooking.status === 'Ditolak' ? 'bg-red-100 text-red-800' : 
+                                'bg-yellow-100 text-yellow-800'
+                            }">${currentBooking.status}</span></p>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <h4 class="font-bold text-gray-800 mb-2">📷 Alatan Diperlukan</h4>
+                        <div class="bg-gray-50 p-3 rounded">
+                            <p>${currentBooking.equipment.join(', ')}</p>
+                            ${currentBooking.otherEquipment ? `<p class="text-sm text-gray-600 mt-1">Lain-lain: ${currentBooking.otherEquipment}</p>` : ''}
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <h4 class="font-bold text-gray-800 mb-2">🎯 Tujuan Penggunaan</h4>
+                        <div class="bg-gray-50 p-3 rounded">
+                            <p>${currentBooking.purpose}</p>
+                        </div>
+                    </div>
+                `;
+            } else if (currentBooking.type === 'documentation') {
+                contentHtml = `
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-bold text-gray-800 mb-2">📋 Maklumat Pemohon</h4>
+                            <p><strong>Nama:</strong> ${currentBooking.teacherName}</p>
+                            <p><strong>Telefon:</strong> ${currentBooking.phoneNumber}</p>
+                            <p><strong>Program:</strong> ${currentBooking.program}</p>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-800 mb-2">📅 Maklumat Program</h4>
+                            <p><strong>Tarikh:</strong> ${new Date(currentBooking.programDate).toLocaleDateString('ms-MY')}</p>
+                            <p><strong>Masa:</strong> ${currentBooking.programTime}</p>
+                            <p><strong>Lokasi:</strong> ${currentBooking.location}</p>
+                            <p><strong>Status:</strong> <span class="px-2 py-1 rounded text-sm ${
+                                currentBooking.status === 'Diluluskan' ? 'bg-green-100 text-green-800' : 
+                                currentBooking.status === 'Ditolak' ? 'bg-red-100 text-red-800' : 
+                                'bg-yellow-100 text-yellow-800'
+                            }">${currentBooking.status}</span></p>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <h4 class="font-bold text-gray-800 mb-2">📹 Jenis Dokumentasi</h4>
+                        <div class="bg-gray-50 p-3 rounded">
+                            <p>${currentBooking.documentationType.join(', ')}</p>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <h4 class="font-bold text-gray-800 mb-2">📝 Butiran Program</h4>
+                        <div class="bg-gray-50 p-3 rounded">
+                            <p>${currentBooking.details}</p>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Studio booking
+                contentHtml = `
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-bold text-gray-800 mb-2">📋 Maklumat Pemohon</h4>
+                            <p><strong>Nama:</strong> ${currentBooking.teacherName}</p>
+                            <p><strong>Telefon:</strong> ${currentBooking.phoneNumber}</p>
+                            <p><strong>Kelas/Panel:</strong> ${currentBooking.classPanel}</p>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-800 mb-2">📅 Maklumat Tempahan</h4>
+                            <p><strong>Tarikh:</strong> ${new Date(currentBooking.bookingDate).toLocaleDateString('ms-MY')}</p>
+                            <p><strong>Masa:</strong> ${currentBooking.startTime} - ${currentBooking.endTime}</p>
+                            <p><strong>Status:</strong> <span class="px-2 py-1 rounded text-sm ${
+                                currentBooking.status === 'Diluluskan' ? 'bg-green-100 text-green-800' : 
+                                currentBooking.status === 'Ditolak' ? 'bg-red-100 text-red-800' : 
+                                'bg-yellow-100 text-yellow-800'
+                            }">${currentBooking.status}</span></p>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <h4 class="font-bold text-gray-800 mb-2">🎯 Tujuan Penggunaan Studio</h4>
+                        <div class="bg-gray-50 p-3 rounded">
+                            <p>${currentBooking.studioPurpose}</p>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            modalContent.innerHTML = contentHtml;
+            
+            // Build action buttons (only show for admin tab and authenticated users)
+            const activeTab = document.querySelector('.tab-btn.border-blue-500')?.dataset?.tab;
+            let actionsHtml = '';
+            
+            if (activeTab === 'admin' && currentUser) {
+                if (currentBooking.status === 'Menunggu') {
+                    actionsHtml = `
+                        <button onclick="updateBookingStatus('${currentBooking.id}', 'Diluluskan')" 
+                                class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
+                            ✅ Luluskan
+                        </button>
+                        <button onclick="updateBookingStatus('${currentBooking.id}', 'Ditolak')" 
+                                class="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700">
+                            ❌ Tolak
+                        </button>
+                        <button onclick="deleteBooking('${currentBooking.id}')" 
+                                class="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700">
+                            🗑️ Padam
+                        </button>
+                    `;
+                } else {
+                    actionsHtml = `
+                        <button onclick="updateBookingStatus('${currentBooking.id}', 'Menunggu')" 
+                                class="bg-yellow-600 text-white px-6 py-2 rounded hover:bg-yellow-700">
+                            🔄 Set Menunggu
+                        </button>
+                        <button onclick="deleteBooking('${currentBooking.id}')" 
+                                class="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700">
+                            🗑️ Padam
+                        </button>
+                    `;
+                }
+            }
+            
+            modalActions.innerHTML = actionsHtml;
+            modal.classList.add('show');
+        }
+
+        async function updateBookingStatus(bookingId, newStatus) {
+            if (!currentUser) {
+                showToast('❌ Sila log masuk sebagai admin terlebih dahulu.', 'error');
+                return;
+            }
+            
+            try {
+                const bookingRef = window.firestore.doc(window.db, 'bookings', bookingId);
+                await window.firestore.updateDoc(bookingRef, {
+                    status: newStatus,
+                    updatedAt: window.firestore.serverTimestamp(),
+                    updatedBy: currentUser.email
+                });
+                
+                showToast(`✅ Status tempahan berjaya dikemaskini kepada "${newStatus}"`, 'success');
+                closeModal();
+                
+            } catch (error) {
+                console.error('Error updating booking status:', error);
+                showToast('❌ Ralat mengemaskini status. Sila cuba lagi.', 'error');
+            }
+        }
+
+        async function removeBlockedSlot(slotId) {
+            if (!currentUser) {
+                showToast('❌ Sila log masuk sebagai admin terlebih dahulu.', 'error');
+                return;
+            }
+            
+            if (!confirm('Adakah anda pasti ingin membuka semula ruangan ini?')) return;
+            
+            try {
+                await window.firestore.deleteDoc(window.firestore.doc(window.db, 'blockedSlots', slotId));
+                showToast('✅ Ruangan berjaya dibuka semula!', 'success');
+            } catch (error) {
+                console.error('Error removing blocked slot:', error);
+                showToast('❌ Ralat membuka ruangan. Sila cuba lagi.', 'error');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('bookingModal').classList.remove('show');
+            currentBooking = null;
+        }
+
+        function handleStatusSearch() {
+            const phoneNumber = document.getElementById('statusPhoneSearch').value.trim();
+            
+            if (!phoneNumber) {
+                showToast('⚠️ Sila masukkan nombor telefon.', 'error');
+                return;
+            }
+            
+            // Search for bookings with matching phone number
+            const userBookings = bookingsData.filter(booking => 
+                booking.phoneNumber === phoneNumber
+            );
+            
+            if (userBookings.length === 0) {
+                document.getElementById('statusResults').classList.add('hidden');
+                document.getElementById('statusNoResults').classList.remove('hidden');
+                return;
+            }
+            
+            // Display results
+            displayStatusResults(userBookings);
+            document.getElementById('statusResults').classList.remove('hidden');
+            document.getElementById('statusNoResults').classList.add('hidden');
+        }
+
+        function displayStatusResults(bookings) {
+            const bookingsList = document.getElementById('statusBookingsList');
+            
+            // Sort by submission date (newest first)
+            bookings.sort((a, b) => {
+                const dateA = a.submissionDate?.toDate?.() || new Date(0);
+                const dateB = b.submissionDate?.toDate?.() || new Date(0);
+                return dateB - dateA;
+            });
+            
+            let html = '';
+            bookings.forEach(booking => {
+                const statusColor = booking.status === 'Diluluskan' ? 'bg-green-100 text-green-800 border-green-200' : 
+                                  booking.status === 'Ditolak' ? 'bg-red-100 text-red-800 border-red-200' : 
+                                  'bg-yellow-100 text-yellow-800 border-yellow-200';
+                
+                const statusIcon = booking.status === 'Diluluskan' ? '✅' : 
+                                 booking.status === 'Ditolak' ? '❌' : '⏳';
+                
+                const typeIcon = booking.type === 'equipment' ? '📷' : 
+                               booking.type === 'documentation' ? '📹' : '📝';
+                
+                const submissionDate = booking.submissionDate?.toDate?.() || new Date();
+                
+                let dateInfo = '';
+                if (booking.bookingDate) {
+                    dateInfo = `📅 ${new Date(booking.bookingDate).toLocaleDateString('ms-MY')} ⏰ ${booking.startTime} - ${booking.endTime}`;
+                } else if (booking.programDate) {
+                    dateInfo = `📅 ${new Date(booking.programDate).toLocaleDateString('ms-MY')} ⏰ ${booking.programTime}`;
+                } else if (booking.borrowDate) {
+                    dateInfo = `📅 ${new Date(booking.borrowDate).toLocaleDateString('ms-MY')} - ${new Date(booking.returnDate).toLocaleDateString('ms-MY')}`;
+                }
+                
+                html += `
+                    <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+                         onclick="viewBookingDetails('${booking.id}')">
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex items-center">
+                                <span class="text-xl mr-2">${typeIcon}</span>
+                                <div>
+                                    <h4 class="font-bold text-gray-800">
+                                        ${booking.type === 'equipment' ? 'Pinjaman Alatan' : 
+                                          booking.type === 'documentation' ? 'Dokumentasi Program' : 'Tempahan Studio'}
+                                    </h4>
+                                    <p class="text-sm text-gray-600">${booking.classPanel || booking.program || 'N/A'}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center px-3 py-1 rounded-full border ${statusColor}">
+                                <span class="mr-1">${statusIcon}</span>
+                                <span class="text-sm font-medium">${booking.status}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="text-sm text-gray-600 mb-2">
+                            ${dateInfo}
+                        </div>
+                        
+                        <div class="text-xs text-gray-500 border-t pt-2">
+                            Dihantar: ${submissionDate.toLocaleString('ms-MY')}
+                        </div>
+                        
+                        ${booking.status === 'Ditolak' ? `
+                            <div class="mt-2 p-2 bg-red-50 rounded text-xs text-red-700">
+                                💡 Tempahan ditolak. Sila hubungi Penyelaras TVPSS untuk maklumat lanjut.
+                            </div>
+                        ` : booking.status === 'Diluluskan' ? `
+                            <div class="mt-2 p-2 bg-green-50 rounded text-xs text-green-700">
+                                ✅ Tempahan diluluskan. Sila hadir mengikut masa yang ditetapkan.
+                            </div>
+                        ` : `
+                            <div class="mt-2 p-2 bg-yellow-50 rounded text-xs text-yellow-700">
+                                ⏳ Tempahan sedang diproses. Anda akan dimaklumkan sebaik sahaja keputusan dibuat.
+                            </div>
+                        `}
+                    </div>
+                `;
+            });
+            
+            bookingsList.innerHTML = html;
+        }
+
+        function clearStatusSearch() {
+            document.getElementById('statusPhoneSearch').value = '';
+            document.getElementById('statusResults').classList.add('hidden');
+            document.getElementById('statusNoResults').classList.add('hidden');
+        }
+
+        async function deleteBooking(bookingId) {
+            if (!currentUser) {
+                showToast('❌ Sila log masuk sebagai admin terlebih dahulu.', 'error');
+                return;
+            }
+            
+            try {
+                // Delete directly from database without confirmation popup
+                await window.firestore.deleteDoc(window.firestore.doc(window.db, 'bookings', bookingId));
+                
+                // Update local data immediately
+                bookingsData = bookingsData.filter(booking => booking.id !== bookingId);
+                
+                showToast('✅ Tempahan berjaya dipadam!', 'success');
+                closeModal();
+                
+                // Refresh admin data if on admin tab
+                const activeTab = document.querySelector('.tab-btn.border-blue-500')?.dataset?.tab;
+                if (activeTab === 'admin') {
+                    loadAdminData();
+                }
+                
+            } catch (error) {
+                console.error('Error deleting booking:', error);
+                showToast('❌ Ralat memadam tempahan. Sila cuba lagi.', 'error');
+            }
+        }
+
+        // Make functions globally available
+        window.viewBookingDetails = viewBookingDetails;
+        window.updateBookingStatus = updateBookingStatus;
+        window.removeBlockedSlot = removeBlockedSlot;
+        window.deleteBooking = deleteBooking;
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9730a7e930cdf8c8',t:'MTc1NTg0NzczMy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

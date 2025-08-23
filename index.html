@@ -141,7 +141,7 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">No. Telefon *</label>
                             <input type="tel" id="studioPhoneNumber" required 
                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                   placeholder="Cth: 019-9876543">
+                                   placeholder="Cth: 019-9876543" inputmode="tel" autocomplete="tel" pattern="^01[0-46-9][ -]?[0-9]{7,8}$">
                         </div>
                     </div>
 
@@ -246,7 +246,7 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">No. Telefon *</label>
                             <input type="tel" id="equipmentPhoneNumber" required 
                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                   placeholder="Cth: 019-9876543">
+                                   placeholder="Cth: 019-9876543" inputmode="tel" autocomplete="tel" pattern="^01[0-46-9][ -]?[0-9]{7,8}$">
                         </div>
                     </div>
 
@@ -347,7 +347,7 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">No. Telefon *</label>
                             <input type="tel" id="documentationPhoneNumber" required 
                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                   placeholder="Cth: 012-3456789">
+                                   placeholder="Cth: 012-3456789" inputmode="tel" autocomplete="tel" pattern="^01[0-46-9][ -]?[0-9]{7,8}$">
                         </div>
                     </div>
 
@@ -463,19 +463,7 @@
                     </div>
                 </div>
 
-                
-                <!-- Aktiviti Terkini (Umum) -->
-                <div class="mt-8 bg-white rounded-lg shadow-lg p-6">
-                    <h3 class="text-xl font-bold text-gray-800 mb-4">
-                        📡 Aktiviti Terkini <span class="ml-2 text-green-600 text-xs font-semibold inline-flex items-center"><span class="w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></span>LIVE</span>
-                    </h3>
-                    <div id="publicRecentActivity" class="space-y-3 max-h-64 overflow-y-auto">
-                        <div class="loading text-center py-4 text-gray-500">
-                            Memuatkan aktiviti terkini...
-                        </div>
-                    </div>
-                </div>
-<!-- No Results -->
+                <!-- No Results -->
                 <div id="statusNoResults" class="hidden">
                     <div class="bg-white rounded-lg shadow-lg p-8 text-center">
                         <div class="text-6xl mb-4">📝</div>
@@ -613,7 +601,7 @@
                     <div class="bg-white rounded-lg shadow-lg p-6">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-xl font-bold text-gray-800">📝 Pengurusan Tempahan</h3>
-                            <div class="flex items-center gap-3"><button id="exportCsvBtn" class="px-3 py-1 bg-emerald-600 text-white rounded text-sm hover:bg-emerald-700">⬇️ Muat turun CSV</button><select id="adminStatusFilter" class="px-3 py-1 border border-gray-300 rounded text-sm">
+                            <select id="adminStatusFilter" class="px-3 py-1 border border-gray-300 rounded text-sm">
                                 <option value="">Semua Status</option>
                                 <option value="Menunggu">Menunggu</option>
                                 <option value="Diluluskan">Diluluskan</option>
@@ -701,7 +689,7 @@
 
                 <!-- Recent Activity -->
                 <div class="mt-8 bg-white rounded-lg shadow-lg p-6">
-                    <h3 class="text-xl font-bold text-gray-800 mb-4">📋 Aktiviti Terkini</h3> <span id="activityLive" class="ml-2 text-green-600 text-xs font-semibold inline-flex items-center"><span class="w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></span>LIVE</span>
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">📋 Aktiviti Terkini</h3>
                     <div id="adminRecentActivity" class="space-y-3 max-h-64 overflow-y-auto">
                         <div class="loading text-center py-4 text-gray-500">
                             Memuatkan aktiviti terkini...
@@ -733,7 +721,7 @@
     </div>
 
     <!-- Toast Notification -->
-    <div id="toast" class="toast bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg">
+    <div id="toast" class="toast bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg" role="status" aria-live="polite" aria-atomic="true">
         <div class="flex items-center">
             <span id="toastIcon" class="mr-2">✅</span>
             <span id="toastMessage">Operasi berjaya!</span>
@@ -790,73 +778,6 @@
             updateConnectionStatus(false);
             showToast('❌ Ralat menyambung ke pangkalan data. Sila muat semula halaman.', 'error');
         }
-    
-        async function exportBookingsCSV() {
-            try {
-                if (!window.db || !window.firestore) {
-                    showToast('❌ Sistem belum siap. Cuba lagi.', 'error');
-                    return;
-                }
-                const qsnap = await window.firestore.getDocs(window.firestore.collection(window.db, 'bookings'));
-                const rows = qsnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                if (rows.length === 0) {
-                    showToast('Tiada data untuk dieksport.', 'error');
-                    return;
-                }
-                const headers = [
-                    'id','type','teacherName','phoneNumber','classPanel',
-                    'bookingDate','startTime','endTime',
-                    'studioPurpose','program','programDate','location',
-                    'documentationType','otherEquipment','equipment',
-                    'status','submissionDate','updatedAt','createdAt','updatedBy','createdBy'
-                ];
-                const csvRows = [headers.join(',')];
-                const q = (v) => {
-                    if (Array.isArray(v)) v = v.join(' | ');
-                    if (v && v.toDate) v = v.toDate().toISOString();
-                    v = (v ?? '').toString().replace(/"/g,'""');
-                    return `"${v}"`;
-                };
-                for (const r of rows) {
-                    const line = [
-                        r.id, r.type, r.teacherName, r.phoneNumber, r.classPanel,
-                        r.bookingDate || r.borrowDate || '',
-                        r.startTime || r.borrowTime || '',
-                        r.endTime || r.returnTime || '',
-                        r.studioPurpose || '',
-                        r.program || '',
-                        r.programDate || r.returnDate || '',
-                        r.location || '',
-                        (r.documentationType || []),
-                        r.otherEquipment || '',
-                        (r.equipment || []),
-                        r.status || '',
-                        r.submissionDate || '',
-                        r.updatedAt || '',
-                        r.createdAt || '',
-                        r.updatedBy || '',
-                        r.createdBy || ''
-                    ].map(q);
-                    csvRows.push(line.join(','));
-                }
-                const csv = '\ufeff' + csvRows.join('\n');
-                const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
-                a.href = url;
-                a.download = `tvpss_bookings_${stamp}.csv`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                showToast('✅ CSV berjaya dijana.', 'success');
-            } catch (e) {
-                console.error(e);
-                showToast('❌ Gagal jana CSV: ' + (e.message||e), 'error');
-            }
-        }
-
     </script>
 
     <!-- Main Application JavaScript -->
@@ -872,6 +793,22 @@
             '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
             '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30'
         ];
+// === Utilities (added) ===
+function fmtLocal(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function normalizeMsisdn(str) {
+  const s = String(str || '').replace(/[^\d]/g, '');
+  return s.startsWith('01') ? s : s;
+}
+// === End Utilities ===
+
 
         // Initialize application
         document.addEventListener('DOMContentLoaded', function() {
@@ -879,15 +816,7 @@
             initializeApp();
         });
 
-        
-        function todayLocalISO() {
-            const d = new Date();
-            const y = d.getFullYear();
-            const m = String(d.getMonth()+1).padStart(2,'0');
-            const day = String(d.getDate()).padStart(2,'0');
-            return `${y}-${m}-${day}`;
-        }
-function initializeApp() {
+        function initializeApp() {
             setupEventListeners();
             setupTimeSlotDependencies();
             
@@ -902,17 +831,15 @@ function initializeApp() {
             // Set current week to start of this week
             currentWeekStart = getStartOfWeek(new Date());
             updateWeekDisplay();
-            // Enforce minimum date = today on all date inputs
-            try {
-                const _today = todayLocalISO();
-                ['studioBookingDate','equipmentBorrowDate','equipmentReturnDate','documentationProgramDate','adminBlockDate']
-                  .forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) el.min = _today;
-                  });
-            } catch (_e) { console.warn('Set min date failed', _e); }
-
-        }
+        
+  try {
+    const _today = fmtLocal(new Date());
+    ['studioBookingDate','equipmentBorrowDate','equipmentReturnDate','documentationProgramDate','adminBlockDate'].forEach(id=>{
+      const el = document.getElementById(id);
+      if (el && !el.min) el.min = _today;
+    });
+  } catch (e) { console.warn('Set min date failed:', e); }
+}
 
         function setupAuthStateListener() {
             if (!window.firebaseAuth) return;
@@ -962,12 +889,6 @@ function initializeApp() {
 
             // Admin filters
             document.getElementById('adminStatusFilter').addEventListener('change', loadAdminBookings);
-            // Export CSV
-            const exportBtn = document.getElementById('exportCsvBtn');
-            if (exportBtn) {
-                exportBtn.addEventListener('click', exportBookingsCSV);
-            }
-
 
             // Modal
             document.getElementById('closeModal').addEventListener('click', closeModal);
@@ -987,7 +908,21 @@ function initializeApp() {
                 if (e.key === 'Enter') handleStatusSearch();
             });
             document.getElementById('statusClearBtn').addEventListener('click', clearStatusSearch);
-        }
+        
+  // Modal actions delegation (added)
+  document.addEventListener('click', function(e){
+    const container = e.target.closest('#modalActions');
+    if (!container) return;
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    const act = btn.dataset.action;
+    const bookingId = container.dataset.bookingId;
+    if (act === 'approve') return updateBookingStatus(bookingId, 'Diluluskan');
+    if (act === 'reject')  return updateBookingStatus(bookingId, 'Ditolak');
+    if (act === 'pending') return updateBookingStatus(bookingId, 'Menunggu');
+    if (act === 'delete')  return deleteBooking(bookingId);
+  });
+}
 
         function setupTimeSlotDependencies() {
             // Studio form time slot dependency
@@ -1004,13 +939,7 @@ function initializeApp() {
                     
                     availableEndTimes.forEach(time => {
                         endTimeSelect.add(new Option(time, time));
-                    })
-                // Populate end time on load if startTime already selected
-                const _startEl = document.getElementById('studioStartTime');
-                if (_startEl && _startEl.value) {
-                    _startEl.dispatchEvent(new Event('change'));
-                }
-;
+                    });
                 }
             });
         }
@@ -1042,17 +971,7 @@ function initializeApp() {
                 submitBtn.textContent = '⏳ Menghantar...';
                 submitBtn.disabled = true;
                 
-                
-                // Disallow past dates
-                try {
-                    const _today = todayLocalISO();
-                    const _sel = document.getElementById('studioBookingDate').value;
-                    if (_sel && _sel < _today) {
-                        showToast('⚠️ Tarikh telah berlalu. Sila pilih tarikh hari ini atau kemudian.', 'error');
-                        return;
-                    }
-                } catch(_e) { }
-// Check if Firebase is available
+                // Check if Firebase is available
                 if (!window.db || !window.firestore) {
                     showToast('❌ Sistem belum siap. Sila tunggu sebentar dan cuba lagi.', 'error');
                     return;
@@ -1060,7 +979,7 @@ function initializeApp() {
                 
                 // Validate form data
                 const teacherName = document.getElementById('studioTeacherName').value.trim();
-                const phoneNumber = document.getElementById('studioPhoneNumber').value.trim();
+                const phoneNumber = normalizeMsisdn(normalizeMsisdn(document.getElementById('studioPhoneNumber').value));
                 const classPanel = document.getElementById('studioClassPanel').value.trim();
                 const bookingDate = document.getElementById('studioBookingDate').value;
                 const startTime = document.getElementById('studioStartTime').value;
@@ -1132,17 +1051,7 @@ function initializeApp() {
                 submitBtn.textContent = '⏳ Menghantar...';
                 submitBtn.disabled = true;
                 
-                
-                // Disallow past dates
-                try {
-                    const _today = todayLocalISO();
-                    const _sel = document.getElementById('equipmentBorrowDate').value;
-                    if (_sel && _sel < _today) {
-                        showToast('⚠️ Tarikh telah berlalu. Sila pilih tarikh hari ini atau kemudian.', 'error');
-                        return;
-                    }
-                } catch(_e) { }
-// Check if Firebase is available
+                // Check if Firebase is available
                 if (!window.db || !window.firestore) {
                     showToast('❌ Sistem belum siap. Sila tunggu sebentar dan cuba lagi.', 'error');
                     return;
@@ -1159,7 +1068,7 @@ function initializeApp() {
                 const formData = {
                     type: 'equipment',
                     teacherName: document.getElementById('equipmentTeacherName').value.trim(),
-                    phoneNumber: document.getElementById('equipmentPhoneNumber').value.trim(),
+                    phoneNumber: normalizeMsisdn(normalizeMsisdn(document.getElementById('equipmentPhoneNumber').value)),
                     classPanel: document.getElementById('equipmentClassPanel').value.trim(),
                     borrowDate: document.getElementById('equipmentBorrowDate').value,
                     returnDate: document.getElementById('equipmentReturnDate').value,
@@ -1196,17 +1105,7 @@ function initializeApp() {
                 submitBtn.textContent = '⏳ Menghantar...';
                 submitBtn.disabled = true;
                 
-                
-                // Disallow past dates
-                try {
-                    const _today = todayLocalISO();
-                    const _sel = document.getElementById('documentationProgramDate').value;
-                    if (_sel && _sel < _today) {
-                        showToast('⚠️ Tarikh telah berlalu. Sila pilih tarikh hari ini atau kemudian.', 'error');
-                        return;
-                    }
-                } catch(_e) { }
-// Check if Firebase is available
+                // Check if Firebase is available
                 if (!window.db || !window.firestore) {
                     showToast('❌ Sistem belum siap. Sila tunggu sebentar dan cuba lagi.', 'error');
                     return;
@@ -1223,7 +1122,7 @@ function initializeApp() {
                 const formData = {
                     type: 'documentation',
                     teacherName: document.getElementById('documentationTeacherName').value.trim(),
-                    phoneNumber: document.getElementById('documentationPhoneNumber').value.trim(),
+                    phoneNumber: normalizeMsisdn(normalizeMsisdn(document.getElementById('documentationPhoneNumber').value)),
                     program: document.getElementById('documentationProgram').value.trim(),
                     programDate: document.getElementById('documentationProgramDate').value,
                     programTime: document.getElementById('documentationProgramTime').value.trim(),
@@ -1671,7 +1570,7 @@ function initializeApp() {
                 for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
                     const currentDate = new Date(currentWeekStart);
                     currentDate.setDate(currentDate.getDate() + dayOffset);
-                    const dateStr = currentDate.toISOString().split('T')[0];
+                    const dateStr = fmtLocal(currentDate);
                     
                     const booking = findBookingForSlot(dateStr, time);
                     const blocked = findBlockedSlot(dateStr, time);
@@ -1726,43 +1625,6 @@ function initializeApp() {
             );
         }
 
-        
-        // === Public Recent Activity (Status tab) ===
-        let unsubscribePublicActivity = null;
-        function subscribePublicActivity() {
-            const container = document.getElementById('publicRecentActivity');
-            if (!container || !window.db || !window.firestore) return;
-            if (unsubscribePublicActivity) { unsubscribePublicActivity(); unsubscribePublicActivity = null; }
-
-            const bookingsRef = window.firestore.collection(window.db, 'bookings');
-            const q = window.firestore.query(bookingsRef, window.firestore.orderBy('submissionDate', 'desc'));
-            unsubscribePublicActivity = window.firestore.onSnapshot(q, (snap) => {
-                const items = snap.docs.slice(0, 10).map(d => ({ id: d.id, ...d.data() }));
-                if (items.length === 0) {
-                    container.innerHTML = '<div class="text-center py-4 text-gray-500 text-sm">📝 Tiada aktiviti lagi.</div>';
-                    return;
-                }
-                let html = '';
-                items.forEach(b => {
-                    const dt = (b.updatedAt?.toDate?.() || b.submissionDate?.toDate?.() || new Date());
-                    const typeText = b.type === 'equipment' ? 'memohon pinjam peralatan' :
-                                     b.type === 'documentation' ? 'memohon dokumentasi program' :
-                                     'membuat tempahan studio';
-                    const who = esc(b.teacherName || 'Seorang guru');
-                    html += `
-                        <div class="bg-green-50 border-l-4 border-green-400 rounded-lg px-4 py-3">
-                            <div class="text-sm"><span class="font-semibold">${who}</span> ${typeText}.</div>
-                            <div class="text-xs text-gray-500">${timeAgo(dt)}</div>
-                        </div>
-                    `;
-                });
-                container.innerHTML = html;
-            }, (err) => {
-                console.error('Public activity error:', err);
-                container.innerHTML = '<div class="text-center py-4 text-red-500 text-sm">Tidak dapat memuat aktiviti.</div>';
-            });
-        }
-
         function loadAdminData() {
             if (!currentUser) return;
             
@@ -1770,13 +1632,12 @@ function initializeApp() {
             loadAdminBookings();
             loadAdminBlockedSlots();
             loadAdminRecentActivity();
-            subscribePublicActivity();
         }
 
         function loadAdminStats() {
             // Calculate stats
             const pendingBookings = bookingsData.filter(b => b.status === 'Menunggu').length;
-            const today = new Date().toISOString().split('T')[0];
+            const today = fmtLocal(new Date());
             const approvedToday = bookingsData.filter(b => 
                 b.status === 'Diluluskan' && 
                 b.bookingDate === today
@@ -1905,19 +1766,7 @@ function initializeApp() {
             blockedSlotsList.innerHTML = html;
         }
 
-        
-        function timeAgo(date) {
-            const d = (date instanceof Date) ? date : new Date(date);
-            const sec = Math.floor((Date.now() - d.getTime()) / 1000);
-            if (sec < 45) return 'sebentar tadi';
-            const m = Math.floor(sec / 60);
-            if (m < 60) return m + ' minit lalu';
-            const h = Math.floor(m / 60);
-            if (h < 24) return h + ' jam lalu';
-            const days = Math.floor(h / 24);
-            return days + ' hari lalu';
-        }
-function loadAdminRecentActivity() {
+        function loadAdminRecentActivity() {
             const recentActivity = document.getElementById('adminRecentActivity');
             
             // Get recent bookings (last 10)
@@ -1960,7 +1809,7 @@ function loadAdminRecentActivity() {
                                 <p class="text-xs text-gray-600">${booking.classPanel || booking.program || 'N/A'}</p>
                             </div>
                             <div class="text-xs text-gray-500">
-                                ${timeAgo(submissionDate)}
+                                ${submissionDate.toLocaleDateString('ms-MY')}
                             </div>
                         </div>
                     </div>
@@ -2087,31 +1936,31 @@ function loadAdminRecentActivity() {
             
             if (activeTab === 'admin' && currentUser) {
                 if (currentBooking.status === 'Menunggu') {
-                    actionsHtml = `
-                        <button onclick="updateBookingStatus('${currentBooking.id}', 'Diluluskan')" 
+                    actionsHtml = `<div id="modalActions" data-booking-id="${currentBooking.id}">
+                        <button data-action="approve" 
                                 class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
                             ✅ Luluskan
                         </button>
-                        <button onclick="updateBookingStatus('${currentBooking.id}', 'Ditolak')" 
+                        <button data-action="reject" 
                                 class="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700">
                             ❌ Tolak
                         </button>
-                        <button onclick="deleteBooking('${currentBooking.id}')" 
+                        <button data-action="delete" 
                                 class="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700">
                             🗑️ Padam
                         </button>
-                    `;
+                    </div>`;
                 } else {
-                    actionsHtml = `
-                        <button onclick="updateBookingStatus('${currentBooking.id}', 'Menunggu')" 
+                    actionsHtml = `<div id="modalActions" data-booking-id="${currentBooking.id}">
+                        <button data-action="pending" 
                                 class="bg-yellow-600 text-white px-6 py-2 rounded hover:bg-yellow-700">
                             🔄 Set Menunggu
                         </button>
-                        <button onclick="deleteBooking('${currentBooking.id}')" 
+                        <button data-action="delete" 
                                 class="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700">
                             🗑️ Padam
                         </button>
-                    `;
+                    </div>`;
                 }
             }
             

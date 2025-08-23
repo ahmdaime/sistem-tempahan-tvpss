@@ -141,7 +141,7 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">No. Telefon *</label>
                             <input type="tel" id="studioPhoneNumber" required 
                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                   placeholder="Cth: 019-9876543">
+                                   placeholder="Cth: 019-9876543" inputmode="tel" autocomplete="tel" pattern="^01[0-46-9][ -]?[0-9]{7,8}$">
                         </div>
                     </div>
 
@@ -246,7 +246,7 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">No. Telefon *</label>
                             <input type="tel" id="equipmentPhoneNumber" required 
                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                   placeholder="Cth: 019-9876543">
+                                   placeholder="Cth: 019-9876543" inputmode="tel" autocomplete="tel" pattern="^01[0-46-9][ -]?[0-9]{7,8}$">
                         </div>
                     </div>
 
@@ -347,7 +347,7 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">No. Telefon *</label>
                             <input type="tel" id="documentationPhoneNumber" required 
                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                   placeholder="Cth: 012-3456789">
+                                   placeholder="Cth: 012-3456789" inputmode="tel" autocomplete="tel" pattern="^01[0-46-9][ -]?[0-9]{7,8}$">
                         </div>
                     </div>
 
@@ -721,7 +721,7 @@
     </div>
 
     <!-- Toast Notification -->
-    <div id="toast" class="toast bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg">
+    <div id="toast" class="toast bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg" role="status" aria-live="polite" aria-atomic="true">
         <div class="flex items-center">
             <span id="toastIcon" class="mr-2">✅</span>
             <span id="toastMessage">Operasi berjaya!</span>
@@ -789,10 +789,26 @@
         let currentBooking = null;
         let currentUser = null;
         
-       const TIME_SLOTS = [
+        const TIME_SLOTS = [
             '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
             '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30'
         ];
+// === Utilities (added) ===
+function fmtLocal(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function normalizeMsisdn(str) {
+  const s = String(str || '').replace(/[^\d]/g, '');
+  return s.startsWith('01') ? s : s;
+}
+// === End Utilities ===
+
 
         // Initialize application
         document.addEventListener('DOMContentLoaded', function() {
@@ -815,7 +831,15 @@
             // Set current week to start of this week
             currentWeekStart = getStartOfWeek(new Date());
             updateWeekDisplay();
-        }
+        
+  try {
+    const _today = fmtLocal(new Date());
+    ['studioBookingDate','equipmentBorrowDate','equipmentReturnDate','documentationProgramDate','adminBlockDate'].forEach(id=>{
+      const el = document.getElementById(id);
+      if (el && !el.min) el.min = _today;
+    });
+  } catch (e) { console.warn('Set min date failed:', e); }
+}
 
         function setupAuthStateListener() {
             if (!window.firebaseAuth) return;
@@ -884,7 +908,21 @@
                 if (e.key === 'Enter') handleStatusSearch();
             });
             document.getElementById('statusClearBtn').addEventListener('click', clearStatusSearch);
-        }
+        
+  // Modal actions delegation (added)
+  document.addEventListener('click', function(e){
+    const container = e.target.closest('#modalActions');
+    if (!container) return;
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    const act = btn.dataset.action;
+    const bookingId = container.dataset.bookingId;
+    if (act === 'approve') return updateBookingStatus(bookingId, 'Diluluskan');
+    if (act === 'reject')  return updateBookingStatus(bookingId, 'Ditolak');
+    if (act === 'pending') return updateBookingStatus(bookingId, 'Menunggu');
+    if (act === 'delete')  return deleteBooking(bookingId);
+  });
+}
 
         function setupTimeSlotDependencies() {
             // Studio form time slot dependency
@@ -941,7 +979,7 @@
                 
                 // Validate form data
                 const teacherName = document.getElementById('studioTeacherName').value.trim();
-                const phoneNumber = document.getElementById('studioPhoneNumber').value.trim();
+                const phoneNumber = normalizeMsisdn(normalizeMsisdn(document.getElementById('studioPhoneNumber').value));
                 const classPanel = document.getElementById('studioClassPanel').value.trim();
                 const bookingDate = document.getElementById('studioBookingDate').value;
                 const startTime = document.getElementById('studioStartTime').value;
@@ -1030,7 +1068,7 @@
                 const formData = {
                     type: 'equipment',
                     teacherName: document.getElementById('equipmentTeacherName').value.trim(),
-                    phoneNumber: document.getElementById('equipmentPhoneNumber').value.trim(),
+                    phoneNumber: normalizeMsisdn(normalizeMsisdn(document.getElementById('equipmentPhoneNumber').value)),
                     classPanel: document.getElementById('equipmentClassPanel').value.trim(),
                     borrowDate: document.getElementById('equipmentBorrowDate').value,
                     returnDate: document.getElementById('equipmentReturnDate').value,
@@ -1084,7 +1122,7 @@
                 const formData = {
                     type: 'documentation',
                     teacherName: document.getElementById('documentationTeacherName').value.trim(),
-                    phoneNumber: document.getElementById('documentationPhoneNumber').value.trim(),
+                    phoneNumber: normalizeMsisdn(normalizeMsisdn(document.getElementById('documentationPhoneNumber').value)),
                     program: document.getElementById('documentationProgram').value.trim(),
                     programDate: document.getElementById('documentationProgramDate').value,
                     programTime: document.getElementById('documentationProgramTime').value.trim(),
@@ -1532,7 +1570,7 @@
                 for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
                     const currentDate = new Date(currentWeekStart);
                     currentDate.setDate(currentDate.getDate() + dayOffset);
-                    const dateStr = currentDate.toISOString().split('T')[0];
+                    const dateStr = fmtLocal(currentDate);
                     
                     const booking = findBookingForSlot(dateStr, time);
                     const blocked = findBlockedSlot(dateStr, time);
@@ -1599,7 +1637,7 @@
         function loadAdminStats() {
             // Calculate stats
             const pendingBookings = bookingsData.filter(b => b.status === 'Menunggu').length;
-            const today = new Date().toISOString().split('T')[0];
+            const today = fmtLocal(new Date());
             const approvedToday = bookingsData.filter(b => 
                 b.status === 'Diluluskan' && 
                 b.bookingDate === today
@@ -1898,31 +1936,31 @@
             
             if (activeTab === 'admin' && currentUser) {
                 if (currentBooking.status === 'Menunggu') {
-                    actionsHtml = `
-                        <button onclick="updateBookingStatus('${currentBooking.id}', 'Diluluskan')" 
+                    actionsHtml = `<div id="modalActions" data-booking-id="${currentBooking.id}">
+                        <button data-action="approve" 
                                 class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
                             ✅ Luluskan
                         </button>
-                        <button onclick="updateBookingStatus('${currentBooking.id}', 'Ditolak')" 
+                        <button data-action="reject" 
                                 class="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700">
                             ❌ Tolak
                         </button>
-                        <button onclick="deleteBooking('${currentBooking.id}')" 
+                        <button data-action="delete" 
                                 class="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700">
                             🗑️ Padam
                         </button>
-                    `;
+                    </div>`;
                 } else {
-                    actionsHtml = `
-                        <button onclick="updateBookingStatus('${currentBooking.id}', 'Menunggu')" 
+                    actionsHtml = `<div id="modalActions" data-booking-id="${currentBooking.id}">
+                        <button data-action="pending" 
                                 class="bg-yellow-600 text-white px-6 py-2 rounded hover:bg-yellow-700">
                             🔄 Set Menunggu
                         </button>
-                        <button onclick="deleteBooking('${currentBooking.id}')" 
+                        <button data-action="delete" 
                                 class="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700">
                             🗑️ Padam
                         </button>
-                    `;
+                    </div>`;
                 }
             }
             
@@ -2152,6 +2190,3 @@
         };
     </script></body>
 </html>
-
-
-

@@ -4,74 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Tempahan TVPSS - SK Putrajaya Presint 5(1)</title>
-    <script src="https://cdn.tailwindcss.com">
-        async function exportBookingsCSV() {
-            try {
-                if (!window.db || !window.firestore) {
-                    showToast('❌ Sistem belum siap. Cuba lagi.', 'error');
-                    return;
-                }
-                const qsnap = await window.firestore.getDocs(window.firestore.collection(window.db, 'bookings'));
-                const rows = qsnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                if (rows.length === 0) {
-                    showToast('Tiada data untuk dieksport.', 'error');
-                    return;
-                }
-                const headers = [
-                    'id','type','teacherName','phoneNumber','classPanel',
-                    'bookingDate','startTime','endTime',
-                    'studioPurpose','program','programDate','location',
-                    'documentationType','otherEquipment','equipment',
-                    'status','submissionDate','updatedAt','createdAt','updatedBy','createdBy'
-                ];
-                const csvRows = [headers.join(',')];
-                const q = (v) => {
-                    if (Array.isArray(v)) v = v.join(' | ');
-                    if (v && v.toDate) v = v.toDate().toISOString();
-                    v = (v ?? '').toString().replace(/"/g,'""');
-                    return `"${v}"`;
-                };
-                for (const r of rows) {
-                    const line = [
-                        r.id, r.type, r.teacherName, r.phoneNumber, r.classPanel,
-                        r.bookingDate || r.borrowDate || '',
-                        r.startTime || r.borrowTime || '',
-                        r.endTime || r.returnTime || '',
-                        r.studioPurpose || '',
-                        r.program || '',
-                        r.programDate || r.returnDate || '',
-                        r.location || '',
-                        (r.documentationType || []),
-                        r.otherEquipment || '',
-                        (r.equipment || []),
-                        r.status || '',
-                        r.submissionDate || '',
-                        r.updatedAt || '',
-                        r.createdAt || '',
-                        r.updatedBy || '',
-                        r.createdBy || ''
-                    ].map(q);
-                    csvRows.push(line.join(','));
-                }
-                const csv = '\ufeff' + csvRows.join('\n'); // BOM for Excel
-                const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
-                a.href = url;
-                a.download = `tvpss_bookings_${stamp}.csv`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                showToast('✅ CSV berjaya dijana.', 'success');
-            } catch (e) {
-                console.error(e);
-                showToast('❌ Gagal jana CSV: ' + (e.message||e), 'error');
-            }
-        }
-
-    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -857,6 +790,73 @@
             updateConnectionStatus(false);
             showToast('❌ Ralat menyambung ke pangkalan data. Sila muat semula halaman.', 'error');
         }
+    
+        async function exportBookingsCSV() {
+            try {
+                if (!window.db || !window.firestore) {
+                    showToast('❌ Sistem belum siap. Cuba lagi.', 'error');
+                    return;
+                }
+                const qsnap = await window.firestore.getDocs(window.firestore.collection(window.db, 'bookings'));
+                const rows = qsnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                if (rows.length === 0) {
+                    showToast('Tiada data untuk dieksport.', 'error');
+                    return;
+                }
+                const headers = [
+                    'id','type','teacherName','phoneNumber','classPanel',
+                    'bookingDate','startTime','endTime',
+                    'studioPurpose','program','programDate','location',
+                    'documentationType','otherEquipment','equipment',
+                    'status','submissionDate','updatedAt','createdAt','updatedBy','createdBy'
+                ];
+                const csvRows = [headers.join(',')];
+                const q = (v) => {
+                    if (Array.isArray(v)) v = v.join(' | ');
+                    if (v && v.toDate) v = v.toDate().toISOString();
+                    v = (v ?? '').toString().replace(/"/g,'""');
+                    return `"${v}"`;
+                };
+                for (const r of rows) {
+                    const line = [
+                        r.id, r.type, r.teacherName, r.phoneNumber, r.classPanel,
+                        r.bookingDate || r.borrowDate || '',
+                        r.startTime || r.borrowTime || '',
+                        r.endTime || r.returnTime || '',
+                        r.studioPurpose || '',
+                        r.program || '',
+                        r.programDate || r.returnDate || '',
+                        r.location || '',
+                        (r.documentationType || []),
+                        r.otherEquipment || '',
+                        (r.equipment || []),
+                        r.status || '',
+                        r.submissionDate || '',
+                        r.updatedAt || '',
+                        r.createdAt || '',
+                        r.updatedBy || '',
+                        r.createdBy || ''
+                    ].map(q);
+                    csvRows.push(line.join(','));
+                }
+                const csv = '\ufeff' + csvRows.join('\n');
+                const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+                a.href = url;
+                a.download = `tvpss_bookings_${stamp}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast('✅ CSV berjaya dijana.', 'success');
+            } catch (e) {
+                console.error(e);
+                showToast('❌ Gagal jana CSV: ' + (e.message||e), 'error');
+            }
+        }
+
     </script>
 
     <!-- Main Application JavaScript -->
@@ -879,7 +879,15 @@
             initializeApp();
         });
 
-        function initializeApp() {
+        
+        function todayLocalISO() {
+            const d = new Date();
+            const y = d.getFullYear();
+            const m = String(d.getMonth()+1).padStart(2,'0');
+            const day = String(d.getDate()).padStart(2,'0');
+            return `${y}-${m}-${day}`;
+        }
+function initializeApp() {
             setupEventListeners();
             setupTimeSlotDependencies();
             
@@ -894,6 +902,16 @@
             // Set current week to start of this week
             currentWeekStart = getStartOfWeek(new Date());
             updateWeekDisplay();
+            // Enforce minimum date = today on all date inputs
+            try {
+                const _today = todayLocalISO();
+                ['studioBookingDate','equipmentBorrowDate','equipmentReturnDate','documentationProgramDate','adminBlockDate']
+                  .forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.min = _today;
+                  });
+            } catch (_e) { console.warn('Set min date failed', _e); }
+
         }
 
         function setupAuthStateListener() {
@@ -986,7 +1004,13 @@
                     
                     availableEndTimes.forEach(time => {
                         endTimeSelect.add(new Option(time, time));
-                    });
+                    })
+                // Populate end time on load if startTime already selected
+                const _startEl = document.getElementById('studioStartTime');
+                if (_startEl && _startEl.value) {
+                    _startEl.dispatchEvent(new Event('change'));
+                }
+;
                 }
             });
         }
@@ -1018,7 +1042,17 @@
                 submitBtn.textContent = '⏳ Menghantar...';
                 submitBtn.disabled = true;
                 
-                // Check if Firebase is available
+                
+                // Disallow past dates
+                try {
+                    const _today = todayLocalISO();
+                    const _sel = document.getElementById('studioBookingDate').value;
+                    if (_sel && _sel < _today) {
+                        showToast('⚠️ Tarikh telah berlalu. Sila pilih tarikh hari ini atau kemudian.', 'error');
+                        return;
+                    }
+                } catch(_e) { }
+// Check if Firebase is available
                 if (!window.db || !window.firestore) {
                     showToast('❌ Sistem belum siap. Sila tunggu sebentar dan cuba lagi.', 'error');
                     return;
@@ -1098,7 +1132,17 @@
                 submitBtn.textContent = '⏳ Menghantar...';
                 submitBtn.disabled = true;
                 
-                // Check if Firebase is available
+                
+                // Disallow past dates
+                try {
+                    const _today = todayLocalISO();
+                    const _sel = document.getElementById('equipmentBorrowDate').value;
+                    if (_sel && _sel < _today) {
+                        showToast('⚠️ Tarikh telah berlalu. Sila pilih tarikh hari ini atau kemudian.', 'error');
+                        return;
+                    }
+                } catch(_e) { }
+// Check if Firebase is available
                 if (!window.db || !window.firestore) {
                     showToast('❌ Sistem belum siap. Sila tunggu sebentar dan cuba lagi.', 'error');
                     return;
@@ -1152,7 +1196,17 @@
                 submitBtn.textContent = '⏳ Menghantar...';
                 submitBtn.disabled = true;
                 
-                // Check if Firebase is available
+                
+                // Disallow past dates
+                try {
+                    const _today = todayLocalISO();
+                    const _sel = document.getElementById('documentationProgramDate').value;
+                    if (_sel && _sel < _today) {
+                        showToast('⚠️ Tarikh telah berlalu. Sila pilih tarikh hari ini atau kemudian.', 'error');
+                        return;
+                    }
+                } catch(_e) { }
+// Check if Firebase is available
                 if (!window.db || !window.firestore) {
                     showToast('❌ Sistem belum siap. Sila tunggu sebentar dan cuba lagi.', 'error');
                     return;

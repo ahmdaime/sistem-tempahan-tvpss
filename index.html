@@ -789,10 +789,24 @@
         let currentBooking = null;
         let currentUser = null;
         
-        const TIME_SLOTS = [
-            '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-            '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30'
-        ];
+        // === Utiliti umum ===
+function fmtLocal(d) {  // format tarikh ikut zon tempatan (elak isu UTC)
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function esc(s) {       // elak XSS apabila memapar data pengguna
+  return String(s ?? '').replace(/[&<>"']/g, m => (
+    {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]
+  ));
+}
+function normalizeMsisdn(str){ // normalkan nombor telefon Malaysia
+  const s = String(str||'').replace(/[^\d]/g,'');
+  // contoh ringkas: kekal 10–11 digit tempatan bermula 01
+  return s.startsWith('01') ? s : s;
+}
+
 
         // Initialize application
         document.addEventListener('DOMContentLoaded', function() {
@@ -2152,4 +2166,5 @@
         };
     </script></body>
 </html>
+
 

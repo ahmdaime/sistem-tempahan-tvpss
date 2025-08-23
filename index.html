@@ -2188,5 +2188,96 @@ function normalizeMsisdn(str) {
                 return false;
             }
         };
-    </script></body>
+    </script>
+<!-- TVPSS: Injected features (Export CSV + Public Live Activity) -->
+<script>
+(function(){
+  const ENABLE_EXPORT_CSV = true;
+  const ENABLE_PUBLIC_ACTIVITY = true;
+
+  function onReady(fn){ if (document.readyState!=='loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
+  function esc(s){ return String(s??'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+  function timeAgo(d){ const t=(d instanceof Date?d:new Date(d)).getTime(); const sec=Math.floor((Date.now()-t)/1000);
+    if(sec<45)return'sebentar tadi'; const m=Math.floor(sec/60); if(m<60)return m+' minit lalu';
+    const h=Math.floor(m/60); if(h<24)return h+' jam lalu'; const days=Math.floor(h/24); return days+' hari lalu'; }
+  function whenFirestoreReady(cb){ (function tryNow(){ if(window.db&&window.firestore&&window.firestore.getDocs) cb(); else setTimeout(tryNow,300); })(); }
+
+  // ===== Export CSV (Admin)
+  function injectExportCsvButton(){
+    try{
+      const filter=document.getElementById('adminStatusFilter'); if(!filter) return;
+      const wrap=filter.parentElement; if(!wrap||document.getElementById('TVPSS_exportCsvBtn')) return;
+      const btn=document.createElement('button');
+      btn.id='TVPSS_exportCsvBtn'; btn.type='button';
+      btn.className='px-3 py-1 bg-emerald-600 text-white rounded text-sm hover:bg-emerald-700';
+      btn.textContent='⬇️ Muat turun CSV';
+      btn.addEventListener('click', TVPSS_exportCSV);
+      wrap.insertBefore(btn, filter);
+    }catch(e){ console.warn('injectExportCsvButton error:', e); }
+  }
+  async function TVPSS_exportCSV(){
+    try{
+      if(!window.db||!window.firestore){ alert('Sistem belum sedia. Cuba lagi.'); return; }
+      const {collection,getDocs}=window.firestore;
+      const snap=await getDocs(collection(window.db,'bookings'));
+      const rows=snap.docs.map(d=>({id:d.id,...d.data()}));
+      if(!rows.length){ alert('Tiada data untuk dieksport.'); return; }
+      const headers=['id','type','teacherName','phoneNumber','classPanel','bookingDate','borrowDate','returnDate','startTime','endTime','program','programDate','programTime','location','documentationType','otherEquipment','equipment','purpose','studioPurpose','details','status','submissionDate','updatedAt','createdAt','updatedBy','createdBy'];
+      const q=v=>{ if(v&&typeof v.toDate==='function') v=v.toDate().toISOString(); if(Array.isArray(v)) v=v.join(' | '); v=(v??'').toString().replace(/"/g,'""'); return `"${v}"`; };
+      const csvRows=[headers.join(',')]; rows.forEach(r=>csvRows.push(headers.map(h=>q(r[h])).join(',')));
+      const csv='\ufeff'+csvRows.join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob);
+      const a=document.createElement('a'); a.href=url; a.download=`tvpss_bookings_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.csv`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    }catch(err){ console.error('TVPSS_exportCSV error:',err); alert('Gagal menjana CSV.'); }
+  }
+
+  // ===== Aktiviti Terkini (LIVE)
+  let _unsubscribePublic=null;
+  function injectPublicActivityCard(){
+    const statusTab=document.getElementById('statusTab'); if(!statusTab||document.getElementById('TVPSS_publicActivity')) return;
+    const card=document.createElement('div'); card.className='mt-8 bg-white rounded-lg shadow-lg p-6';
+    card.innerHTML=`
+      <h3 class="text-xl font-bold text-gray-800 mb-4">
+        📡 Aktiviti Terkini
+        <span class="ml-2 text-green-600 text-xs font-semibold inline-flex items-center">
+          <span class="w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></span>LIVE
+        </span>
+      </h3>
+      <div id="TVPSS_publicActivity" class="space-y-3 max-h-64 overflow-y-auto">
+        <div class="text-center py-4 text-gray-500">Memuatkan aktiviti terkini...</div>
+      </div>`;
+    const container=statusTab.querySelector('.max-w-4xl.mx-auto')||statusTab; container.appendChild(card);
+  }
+  function subscribePublicActivity(){
+    const container=document.getElementById('TVPSS_publicActivity'); if(!container) return;
+    if(_unsubscribePublic){ try{_unsubscribePublic();}catch(_){} _unsubscribePublic=null; }
+    const {collection,onSnapshot}=window.firestore; const ref=collection(window.db,'bookings');
+    _unsubscribePublic=onSnapshot(ref,snap=>{
+      const items=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>{
+        const ad=(a.updatedAt?.toDate?.()||a.submissionDate?.toDate?.()||new Date(0)).getTime();
+        const bd=(b.updatedAt?.toDate?.()||b.submissionDate?.toDate?.()||new Date(0)).getTime();
+        return bd-ad;
+      }).slice(0,10);
+      if(!items.length){ container.innerHTML='<div class="text-center py-4 text-gray-500 text-sm">📝 Tiada aktiviti lagi.</div>'; return; }
+      container.innerHTML=items.map(b=>{
+        const when=b.updatedAt?.toDate?.()||b.submissionDate?.toDate?.()||new Date();
+        const who=esc(b.teacherName||'Seorang guru');
+        const typeText=b.type==='equipment'?'memohon pinjam peralatan':(b.type==='documentation'?'memohon dokumentasi program':'membuat tempahan studio');
+        return `<div class="bg-green-50 border-l-4 border-green-400 rounded-lg px-4 py-3">
+                  <div class="text-sm"><span class="font-semibold">${who}</span> ${typeText}.</div>
+                  <div class="text-xs text-gray-500">${timeAgo(when)}</div>
+                </div>`;
+      }).join('');
+    },err=>{ console.error('Public activity snapshot error:',err);
+      container.innerHTML='<div class="text-center py-4 text-red-500 text-sm">Tidak dapat memuat aktiviti.</div>'; });
+  }
+
+  onReady(function(){
+    if(ENABLE_EXPORT_CSV) injectExportCsvButton();
+    if(ENABLE_PUBLIC_ACTIVITY) injectPublicActivityCard();
+    whenFirestoreReady(function(){ if(ENABLE_PUBLIC_ACTIVITY) subscribePublicActivity(); });
+  });
+})();
+</script></body>
 </html>
+
